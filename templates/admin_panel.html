@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Quiz Platform</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Color System */
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --primary-light: #e8f0fe;
+            --surface: #ffffff;
+            --surface-secondary: #f8f9fa;
+            --surface-tertiary: #f1f3f4;
+            --border: #dadce0;
+            --border-light: #e8eaed;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --text-tertiary: #80868b;
+            --error: #d93025;
+            --error-light: #fce8e6;
+            --success: #1e8e3e;
+            --success-light: #e6f4ea;
+            
+            /* Spacing (8-point grid) */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-size-xs: 12px;
+            --font-size-sm: 13px;
+            --font-size-base: 14px;
+            --font-size-md: 16px;
+            --font-size-lg: 20px;
+            --font-size-xl: 24px;
+            --font-size-2xl: 32px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+            --shadow-md: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+            --shadow-lg: 0 2px 6px 2px rgba(60, 64, 67, 0.15), 0 8px 24px 4px rgba(60, 64, 67, 0.15);
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+            
+            /* Transitions */
+            --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: var(--surface-secondary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Header */
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 64px;
+        }
+
+        .header-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .header-title h1 {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            font-family: var(--font-family);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+            line-height: 1.5;
+            min-height: 36px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-tertiary);
+        }
+
+        .btn-text {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-text:hover {
+            background: var(--surface-tertiary);
+        }
+
+        .btn-error {
+            background: transparent;
+            color: var(--error);
+        }
+
+        .btn-error:hover {
+            background: var(--error-light);
+        }
+
+        .btn-icon {
+            padding: var(--space-sm);
+            min-height: 36px;
+            width: 36px;
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-lg);
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: var(--space-xl);
+        }
+
+        .page-header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-md);
+            flex-wrap: wrap;
+            gap: var(--space-md);
+        }
+
+        .page-title {
+            font-size: var(--font-size-2xl);
+            font-weight: 400;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .page-subtitle {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            font-size: var(--font-size-base);
+        }
+
+        .alert-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: var(--error-light);
+            color: var(--error);
+        }
+
+        /* Events Grid */
+        .events-grid {
+            display: grid;
+            gap: var(--space-lg);
+        }
+
+        .event-card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            transition: all var(--transition);
+            overflow: hidden;
+        }
+
+        .event-card:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .event-card-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: var(--space-md);
+        }
+
+        .event-card-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .event-card-title {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+            letter-spacing: -0.01em;
+        }
+
+        .event-card-meta {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            flex-wrap: wrap;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .meta-item .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .event-card-body {
+            padding: var(--space-lg);
+        }
+
+        .rounds-label {
+            font-size: var(--font-size-xs);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-md);
+        }
+
+        .rounds-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: var(--space-sm);
+        }
+
+        .round-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-md);
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            transition: all var(--transition);
+        }
+
+        .round-link:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-2xl) var(--space-lg);
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-md);
+        }
+
+        .empty-state-title {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .empty-state-description {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+            margin-bottom: var(--space-lg);
+        }
+
+        /* FAB (Floating Action Button) */
+        .fab {
+            position: fixed;
+            bottom: var(--space-lg);
+            right: var(--space-lg);
+            width: 56px;
+            height: 56px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-full);
+            box-shadow: var(--shadow-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition);
+            z-index: 90;
+        }
+
+        .fab:hover {
+            background: var(--primary-hover);
+            box-shadow: var(--shadow-lg);
+            transform: scale(1.05);
+        }
+
+        .fab .material-icons-outlined {
+            font-size: 24px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: var(--space-md);
+            animation: fadeIn 200ms ease-out;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            max-width: 480px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 250ms ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(32px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: var(--font-size-xl);
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+        }
+
+        .modal-close:hover {
+            background: var(--surface-tertiary);
+        }
+
+        .modal-body {
+            padding: var(--space-lg);
+        }
+
+        .modal-footer {
+            padding: var(--space-lg);
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: var(--space-sm);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .form-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--font-size-base);
+            font-family: var(--font-family);
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+            line-height: 1.5;
+            min-height: 40px;
+        }
+
+        .form-input:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-container {
+                padding: 0 var(--space-md);
+            }
+
+            .main-container {
+                padding: var(--space-lg) var(--space-md);
+            }
+
+            .page-title {
+                font-size: var(--font-size-xl);
+            }
+
+            .event-card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .rounds-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+
+            .fab {
+                bottom: var(--space-md);
+                right: var(--space-md);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-title h1 {
+                font-size: var(--font-size-md);
+            }
+
+            .page-header-top {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .event-card-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-xs);
+            }
+
+            .modal {
+                border-radius: var(--radius-md) var(--radius-md) 0 0;
+                margin-top: auto;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            .header,
+            .fab,
+            .btn-error,
+            .page-header-top .btn-primary {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-title">
+                <h1>Quiz Platform</h1>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'admin_logout' %}" class="btn btn-text">
+                    <span class="material-icons-outlined">logout</span>
+                    <span>Logout</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Success/Error Messages -->
+        <!-- Uncomment when needed -->
+        <!--
+        <div class="alert alert-success">
+            <span class="material-icons-outlined">check_circle</span>
+            <span>Event created successfully</span>
+        </div>
+        -->
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-header-top">
+                <div>
+                    <h2 class="page-title">Events</h2>
+                    <p class="page-subtitle">Manage your quiz events and rounds</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Events Grid -->
+        <div class="events-grid">
+            {% if events %}
+                {% for event in events %}
+                <div class="event-card">
+                    <div class="event-card-header">
+                        <div class="event-card-info">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <h3 class="event-card-title" style="margin-bottom: 0;">{{ event.name }}</h3>
+                                <span style="background: #667eea; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap;">🔐 {{ event.event_access_password }}</span>
+                            </div>
+                            <div class="event-card-meta">
+                                <div class="meta-item">
+                                    <span class="material-icons-outlined">calendar_today</span>
+                                    <span>{{ event.date|date:"d M, Y" }}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="material-icons-outlined">workspaces</span>
+                                    <span>{{ event.number_of_rounds }} Round{{ event.number_of_rounds|pluralize }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <form method="POST" action="{% url 'delete_event' %}" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="event_id" value="{{ event.id }}">
+                            <button type="submit" class="btn btn-error btn-icon" onclick="return confirm('Are you sure you want to delete this event?');" aria-label="Delete event">
+                                <span class="material-icons-outlined">delete</span>
+                            </button>
+                        </form>
+                    </div>
+                    <div class="event-card-body">
+                        <div class="rounds-label">Rounds</div>
+                        <div class="rounds-grid">
+                            {% for round_num in event.get_rounds %}
+                            <a href="{% url 'round_details' event.id round_num %}" class="round-link">Round {{ round_num }}</a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    <span class="material-icons-outlined" style="font-size: inherit;">event_note</span>
+                </div>
+                <h3 class="empty-state-title">No events yet</h3>
+                <p class="empty-state-description">Create your first event to get started</p>
+                <button class="btn btn-primary" onclick="openModal()">
+                    <span class="material-icons-outlined">add</span>
+                    <span>Create Event</span>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="openModal()" aria-label="Add new event">
+        <span class="material-icons-outlined">add</span>
+    </button>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="eventModal" onclick="handleOverlayClick(event)">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Create Event</h3>
+                <button class="modal-close" onclick="closeModal()" aria-label="Close">
+                    <span class="material-icons-outlined">close</span>
+                </button>
+            </div>
+            <form id="eventForm" method="POST" action="{% url 'add_event' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="eventName" class="form-label">Event name</label>
+                        <input 
+                            type="text" 
+                            id="eventName" 
+                            name="event_name" 
+                            class="form-input" 
+                            placeholder="e.g., Quiz Olympiad 2026"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventDate" class="form-label">Event date</label>
+                        <input 
+                            type="date" 
+                            id="eventDate" 
+                            name="event_date" 
+                            class="form-input"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventRounds" class="form-label">Number of rounds</label>
+                        <input 
+                            type="number" 
+                            id="eventRounds" 
+                            name="number_of_rounds" 
+                            class="form-input" 
+                            min="1" 
+                            max="10" 
+                            value="1"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventPassword" class="form-label">Event Access Password</label>
+                        <input 
+                            type="text" 
+                            id="eventPassword" 
+                            name="event_access_password" 
+                            class="form-input" 
+                            placeholder="e.g., QUIZ2026"
+                            required
+                        >
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Event</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Modal Functions
+        function openModal() {
+            const modal = document.getElementById('eventModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // Focus first input
+            setTimeout(() => {
+                document.getElementById('eventName').focus();
+            }, 100);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('eventModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            document.getElementById('eventForm').reset();
+        }
+
+        function handleOverlayClick(event) {
+            if (event.target === event.currentTarget) {
+                closeModal();
+            }
+        }
+
+        // Keyboard Navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                const modal = document.getElementById('eventModal');
+                if (modal.classList.contains('active')) {
+                    closeModal();
+                }
+            }
+        });
+
+        // Delete Confirmation
+        function confirmDelete(eventId) {
+            if (confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+                // Handle delete action
+                console.log('Deleting event:', eventId);
+                // In actual implementation, submit form or make API call
+            }
+        }
+
+        // Set minimum date to today for event date input
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('eventDate').setAttribute('min', today);
+    </script>
+
+    <!-- Watermark -->
+    <style>
+        .watermark-footer {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            font-size: 11px;
+            color: #000000;
+            opacity: 0.35;
+            text-align: right;
+            pointer-events: none;
+            z-index: 100;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+    <div class="watermark-footer">
+        <div>Developed by Gokul S</div>
+        <div>MCA 1st year SIMS</div>
+    </div>
+</body>
+</html>

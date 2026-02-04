@@ -1,0 +1,310 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="enterprise-container">
+    <div class="login-card">
+        
+        <!-- Header Section -->
+        <div class="card-header">
+            <div class="security-icon-wrapper">
+                <svg class="security-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            </div>
+            <h2 class="card-title">Admin Portal</h2>
+            <p class="card-subtitle">Enter your master password to manage assessments</p>
+        </div>
+
+        <!-- Notification Area -->
+        <div class="alert-container">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <!-- Login Form -->
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="input-group">
+                <label for="password" class="input-label">Administrator Password</label>
+                <div class="input-wrapper">
+                    <input type="password" id="password" name="password" class="form-control" placeholder="••••••••••••" required autofocus>
+                    <svg class="input-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <span>Access Dashboard</span>
+                <svg class="btn-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </form>
+        
+        <!-- Footer Link -->
+        <div class="footer-link">
+            <a href="{% url 'login_choice' %}" class="link-muted">
+                <svg class="link-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Return to role selection
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- CSS VARIABLES (Consistent with previous pages) --- */
+    :root {
+        --color-bg: #F3F4F6;
+        --color-surface: #FFFFFF;
+        --color-primary: #4F46E5; /* Slightly more purple/indigo for Admin to differentiate */
+        --color-primary-dark: #4338CA;
+        --color-text-main: #111827;
+        --color-text-muted: #6B7280;
+        --color-border: #E5E7EB;
+        --color-error-bg: #FEF2F2;
+        --color-error-text: #B91C1C;
+        --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --radius-std: 8px;
+        --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: var(--font-family);
+        background-color: var(--color-bg);
+        color: var(--color-text-main);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* --- LAYOUT --- */
+    .enterprise-container {
+        width: 100%;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .login-card {
+        background: var(--color-surface);
+        width: 100%;
+        max-width: 440px;
+        border-radius: var(--radius-std);
+        box-shadow: var(--shadow-card);
+        border: 1px solid var(--color-border);
+        padding: 40px;
+    }
+
+    /* --- HEADER --- */
+    .card-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .security-icon-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 56px;
+        height: 56px;
+        background-color: #EEF2FF;
+        color: var(--color-primary);
+        border-radius: 50%;
+        margin-bottom: 20px;
+    }
+
+    .security-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+        margin-bottom: 8px;
+        letter-spacing: -0.025em;
+    }
+
+    .card-subtitle {
+        color: var(--color-text-muted);
+        font-size: 0.875rem;
+    }
+
+    /* --- ALERTS --- */
+    .alert-container {
+        margin-bottom: 24px;
+    }
+
+    .alert {
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: var(--color-error-bg); /* Defaulting to red for Admin errors */
+        color: var(--color-error-text);
+        border: 1px solid #FECACA;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    .alert-icon {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+
+    /* --- FORM ELEMENTS --- */
+    .input-group {
+        margin-bottom: 24px;
+    }
+
+    .input-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-main);
+        margin-bottom: 8px;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .form-control {
+        width: 100%;
+        height: 48px;
+        padding: 0 16px 0 44px; /* Left padding for icon */
+        font-size: 0.95rem;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
+        background-color: var(--color-surface);
+        transition: all 0.2s;
+        font-family: inherit;
+        color: var(--color-text-main);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .input-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 20px;
+        height: 20px;
+        color: var(--color-text-muted);
+        pointer-events: none;
+    }
+
+    /* --- BUTTON --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 48px;
+        padding: 0 24px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background-color: var(--color-primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--color-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-arrow {
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s;
+    }
+
+    .btn-primary:hover .btn-arrow {
+        transform: translateX(3px);
+    }
+
+    /* --- FOOTER LINK --- */
+    .footer-link {
+        margin-top: 32px;
+        text-align: center;
+        border-top: 1px solid #F3F4F6;
+        padding-top: 20px;
+    }
+
+    .link-muted {
+        color: var(--color-text-muted);
+        font-size: 0.875rem;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: color 0.2s;
+    }
+
+    .link-muted:hover {
+        color: var(--color-primary);
+    }
+
+    .link-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* --- ANIMATION --- */
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* --- RESPONSIVE --- */
+    @media (max-width: 480px) {
+        .login-card {
+            padding: 24px;
+            box-shadow: none;
+            border: none;
+            background: transparent;
+        }
+        .enterprise-container {
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+    }
+</style>
+{% endblock %}

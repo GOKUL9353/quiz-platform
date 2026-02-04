@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round Details - Quiz Platform</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Color System */
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --primary-light: #e8f0fe;
+            --surface: #ffffff;
+            --surface-secondary: #f8f9fa;
+            --surface-tertiary: #f1f3f4;
+            --border: #dadce0;
+            --border-light: #e8eaed;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --text-tertiary: #80868b;
+            --success: #1e8e3e;
+            --success-light: #e6f4ea;
+            --error: #d93025;
+            --error-light: #fce8e6;
+            
+            /* Spacing (8-point grid) */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+            
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-size-xs: 12px;
+            --font-size-sm: 13px;
+            --font-size-base: 14px;
+            --font-size-md: 16px;
+            --font-size-lg: 20px;
+            --font-size-xl: 24px;
+            --font-size-2xl: 32px;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+            --shadow-md: 0 1px 3px 0 rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
+            
+            /* Border Radius */
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-full: 9999px;
+            
+            /* Transitions */
+            --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: var(--font-family);
+            font-size: var(--font-size-base);
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: var(--surface-secondary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Header */
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 0 var(--space-lg);
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .header-title {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-xs) var(--space-md);
+            background: var(--surface-tertiary);
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--font-size-base);
+            font-weight: 500;
+            font-family: var(--font-family);
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+            text-decoration: none;
+            line-height: 1.5;
+            min-height: 36px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-text {
+            background: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn-text:hover {
+            background: var(--surface-tertiary);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-lg);
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            font-size: var(--font-size-base);
+        }
+
+        .alert-success {
+            background: var(--success-light);
+            color: var(--success);
+        }
+
+        .alert-error {
+            background: var(--error-light);
+            color: var(--error);
+        }
+
+        /* Layout Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: var(--space-xl);
+            align-items: start;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: sticky;
+            top: calc(64px + var(--space-xl));
+        }
+
+        .sidebar-card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: var(--space-lg);
+        }
+
+        .sidebar-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .sidebar-title {
+            font-size: var(--font-size-md);
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .sidebar-title .material-icons-outlined {
+            font-size: 20px;
+        }
+
+        .sidebar-body {
+            padding: var(--space-lg);
+        }
+
+        /* Settings Display */
+        .settings-display {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sm);
+            padding: var(--space-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: var(--font-size-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .settings-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .settings-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: var(--space-lg);
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+        }
+
+        .form-label-required::after {
+            content: ' *';
+            color: var(--primary);
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            padding: var(--space-sm) var(--space-md);
+            font-size: var(--font-size-base);
+            font-family: var(--font-family);
+            color: var(--text-primary);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+            line-height: 1.5;
+        }
+
+        .form-input {
+            min-height: 40px;
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-input:hover,
+        .form-textarea:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px var(--primary);
+        }
+
+        .form-input::placeholder,
+        .form-textarea::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .form-hint {
+            font-size: var(--font-size-xs);
+            color: var(--text-tertiary);
+            margin-top: var(--space-xs);
+        }
+
+        /* Content Area */
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xl);
+        }
+
+        .content-card {
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .content-card-header {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .content-card-title {
+            font-size: var(--font-size-lg);
+            font-weight: 500;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        .content-card-title .material-icons-outlined {
+            font-size: 24px;
+        }
+
+        .content-card-body {
+            padding: var(--space-lg);
+        }
+
+        /* Options Layout */
+        .option-row {
+            display: grid;
+            grid-template-columns: 32px 1fr auto;
+            gap: var(--space-md);
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+
+        .option-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .option-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--surface-tertiary);
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .radio-wrapper {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .radio-input {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        /* Questions List */
+        .questions-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+
+        .question-card {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            transition: all var(--transition);
+        }
+
+        .question-card:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        .question-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+        }
+
+        .question-number {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-xs) var(--space-sm);
+            background: var(--primary-light);
+            color: var(--primary);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .question-text {
+            font-size: var(--font-size-md);
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin-bottom: var(--space-md);
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .option-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--surface);
+            border: 1px solid var(--border-light);
+            border-left: 3px solid var(--border);
+            border-radius: var(--radius-sm);
+            transition: all var(--transition);
+        }
+
+        .option-item.correct {
+            border-left-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .option-letter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            height: 28px;
+            background: var(--surface-tertiary);
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        .option-item.correct .option-letter {
+            background: var(--success);
+            color: white;
+        }
+
+        .option-text {
+            flex: 1;
+            color: var(--text-primary);
+            font-size: var(--font-size-sm);
+            line-height: 1.6;
+        }
+
+        .correct-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-sm);
+            background: var(--success);
+            color: white;
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+            font-weight: 600;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-2xl);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            color: var(--text-tertiary);
+            margin-bottom: var(--space-md);
+        }
+
+        .empty-state-title {
+            font-size: var(--font-size-md);
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .empty-state-description {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                position: static;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-container {
+                padding: 0 var(--space-md);
+            }
+
+            .header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-xs);
+            }
+
+            .header-title {
+                font-size: var(--font-size-md);
+            }
+
+            .main-container {
+                padding: var(--space-lg) var(--space-md);
+            }
+
+            .option-row {
+                grid-template-columns: 32px 1fr;
+            }
+
+            .radio-wrapper {
+                grid-column: 2;
+                margin-top: var(--space-sm);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .option-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <h1 class="header-title">{{ event.name }}</h1>
+                <span class="header-badge">Round {{ round_number }}</span>
+            </div>
+            <a href="{% url 'admin_panel' %}" class="btn btn-text">
+                <span class="material-icons-outlined">arrow_back</span>
+                <span>Back to Events</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-success{% endif %}">
+                    <span class="material-icons-outlined">
+                        {% if 'error' in message.tags %}error{% else %}check_circle{% endif %}
+                    </span>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        <h3 class="sidebar-title">
+                            <span class="material-icons-outlined">settings</span>
+                            <span>Round Settings</span>
+                        </h3>
+                    </div>
+                    <div class="sidebar-body">
+                        <!-- Current Settings Display -->
+                        <div class="settings-display">
+                            <div class="settings-item">
+                                <span class="settings-label">Duration</span>
+                                <span class="settings-value">{{ round.duration_minutes }} min</span>
+                            </div>
+                            <div class="settings-item">
+                                <span class="settings-label">Password</span>
+                                <span class="settings-value">{{ round.access_password|default:"Not set" }}</span>
+                            </div>
+                            <div class="settings-item">
+                                <span class="settings-label">Owner Email</span>
+                                <span class="settings-value">{{ round.owner_email|default:"Not set" }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Settings Form -->
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="duration_minutes" class="form-label form-label-required">
+                                    Duration (minutes)
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="duration_minutes" 
+                                    name="duration_minutes" 
+                                    class="form-input" 
+                                    value="{{ round.duration_minutes }}"
+                                    min="1" 
+                                    max="480" 
+                                    required
+                                >
+                                <div class="form-hint">1-480 minutes</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="access_password" class="form-label form-label-required">
+                                    Access Password
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="access_password" 
+                                    name="access_password" 
+                                    class="form-input" 
+                                    value="{{ round.access_password }}"
+                                    placeholder="Enter password"
+                                    required
+                                >
+                                <div class="form-hint">Required for candidates</div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="owner_email" class="form-label">
+                                    Owner Email
+                                </label>
+                                <input 
+                                    type="email" 
+                                    id="owner_email" 
+                                    name="owner_email" 
+                                    class="form-input" 
+                                    value="{{ round.owner_email|default:'' }}"
+                                    placeholder="Enter owner email (optional)"
+                                >
+                                <div class="form-hint">Email address of the round owner/coordinator</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                <span class="material-icons-outlined">save</span>
+                                <span>Save Settings</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <div class="content-area">
+                <!-- Add Question Card -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2 class="content-card-title">
+                            <span class="material-icons-outlined">add_circle</span>
+                            <span>Add New Question</span>
+                        </h2>
+                    </div>
+                    <div class="content-card-body">
+                        <form method="POST" action="{% url 'add_question' event.id round_number %}">
+                            {% csrf_token %}
+                            
+                            <div class="form-group">
+                                <label for="question_text" class="form-label form-label-required">
+                                    Question Text
+                                </label>
+                                <textarea 
+                                    id="question_text" 
+                                    name="question_text" 
+                                    class="form-textarea"
+                                    placeholder="Enter your question here..."
+                                    required
+                                ></textarea>
+                                <div class="form-hint">Be clear and concise</div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label form-label-required">Answer Options</label>
+                                
+                                <!-- Option A -->
+                                <div class="option-row">
+                                    <div class="option-label">A</div>
+                                    <input 
+                                        type="text" 
+                                        name="option_1" 
+                                        class="form-input"
+                                        placeholder="Option A"
+                                        required
+                                    >
+                                    <label class="radio-wrapper">
+                                        <input type="radio" name="correct_option" value="1" class="radio-input" required>
+                                        <span>Correct</span>
+                                    </label>
+                                </div>
+
+                                <!-- Option B -->
+                                <div class="option-row">
+                                    <div class="option-label">B</div>
+                                    <input 
+                                        type="text" 
+                                        name="option_2" 
+                                        class="form-input"
+                                        placeholder="Option B"
+                                        required
+                                    >
+                                    <label class="radio-wrapper">
+                                        <input type="radio" name="correct_option" value="2" class="radio-input" required>
+                                        <span>Correct</span>
+                                    </label>
+                                </div>
+
+                                <!-- Option C -->
+                                <div class="option-row">
+                                    <div class="option-label">C</div>
+                                    <input 
+                                        type="text" 
+                                        name="option_3" 
+                                        class="form-input"
+                                        placeholder="Option C"
+                                        required
+                                    >
+                                    <label class="radio-wrapper">
+                                        <input type="radio" name="correct_option" value="3" class="radio-input" required>
+                                        <span>Correct</span>
+                                    </label>
+                                </div>
+
+                                <!-- Option D -->
+                                <div class="option-row">
+                                    <div class="option-label">D</div>
+                                    <input 
+                                        type="text" 
+                                        name="option_4" 
+                                        class="form-input"
+                                        placeholder="Option D"
+                                        required
+                                    >
+                                    <label class="radio-wrapper">
+                                        <input type="radio" name="correct_option" value="4" class="radio-input" required>
+                                        <span>Correct</span>
+                                    </label>
+                                </div>
+
+                                <div class="form-hint">Select the correct answer</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <span class="material-icons-outlined">add</span>
+                                <span>Add Question</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Questions List Card -->
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h2 class="content-card-title">
+                            <span class="material-icons-outlined">quiz</span>
+                            <span>Questions in this Round</span>
+                        </h2>
+                    </div>
+                    <div class="content-card-body">
+                        {% if round.questions.all %}
+                            <div class="questions-list">
+                                {% for question in round.questions.all %}
+                                    <div class="question-card">
+                                        <div class="question-header">
+                                            <span class="question-number">Question #{{ forloop.counter }}</span>
+                                        </div>
+                                        <div class="question-text">{{ question.question_text }}</div>
+                                        <div class="options-list">
+                                            {% for option in question.options.all %}
+                                                <div class="option-item {% if option.is_correct %}correct{% endif %}">
+                                                    <div class="option-letter">{{ option.get_option_number_display }}</div>
+                                                    <div class="option-text">{{ option.option_text }}</div>
+                                                    {% if option.is_correct %}
+                                                        <span class="correct-badge">
+                                                            <span class="material-icons-outlined" style="font-size: 14px;">check</span>
+                                                            <span>Correct</span>
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty-state">
+                                <div class="empty-state-icon">
+                                    <span class="material-icons-outlined" style="font-size: inherit;">help_outline</span>
+                                </div>
+                                <h3 class="empty-state-title">No questions yet</h3>
+                                <p class="empty-state-description">Create your first question using the form above</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Watermark -->
+    <style>
+        .page-watermark {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            font-size: 11px;
+            color: #000000;
+            opacity: 0.35;
+            text-align: right;
+            pointer-events: none;
+            z-index: 100;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+    <div class="page-watermark">
+        <div>Developed by Gokul S</div>
+        <div>MCA 1st year SIMS</div>
+    </div>
+</body>
+</html>

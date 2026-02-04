@@ -1,0 +1,615 @@
+{% extends 'base.html' %}
+
+{% block title %}Candidate Login - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Google Fonts: Inter (Professional Sans-Serif) -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<div class="enterprise-container">
+    <div class="login-card">
+        
+        <!-- Brand Header -->
+        <div class="card-header">
+            <div class="brand-pill">Assessment Portal</div>
+            <h1 class="card-title">Candidate Login</h1>
+            <p class="card-subtitle">Please complete the steps below to begin.</p>
+        </div>
+
+        <!-- Animated Progress Stepper -->
+        <div class="stepper-wrapper">
+            <div class="step-item active" id="indicator-1">
+                <div class="step-circle">1</div>
+                <div class="step-label">Event</div>
+            </div>
+            <div class="step-line">
+                <div class="step-line-fill" id="progress-line"></div>
+            </div>
+            <div class="step-item" id="indicator-2">
+                <div class="step-circle">2</div>
+                <div class="step-label">Round</div>
+            </div>
+        </div>
+
+        <!-- Alert System -->
+        <div id="alert-container"></div>
+        {% if messages %}
+            {% for message in messages %}
+                <script>
+                    document.addEventListener('DOMContentLoaded', () => {
+                        showError("{{ message }}", "{{ message.tags }}");
+                    });
+                </script>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Sliding Viewport -->
+        <div class="carousel-viewport">
+            <div class="carousel-track" id="main-track">
+                
+                <!-- SLIDE 1: Event Selection -->
+                <div class="carousel-slide">
+                    <div class="slide-content">
+                        <form id="form-step1" onsubmit="return false;">
+                            {% csrf_token %}
+                            
+                            <div class="form-group">
+                                <label class="input-label" for="event_id">Select Event</label>
+                                <div class="select-wrapper">
+                                    <select id="event_id" name="event_id" class="form-input" required>
+                                        <option value="">Choose active event...</option>
+                                        {% for event in events %}
+                                            <option value="{{ event.id }}">{{ event.name }} ({{ event.date }})</option>
+                                        {% endfor %}
+                                    </select>
+                                    <svg class="select-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="input-label" for="event_password">Event Password</label>
+                                <input type="password" id="event_password" class="form-input" placeholder="Enter access code" required>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" id="btn-verify" onclick="verifyEventPassword()">
+                                <span>Continue</span>
+                                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
+                            </button>
+                        </form>
+                        
+                        <div class="slide-footer">
+                            <a href="{% url 'login_choice' %}" class="link-back">Back to Login Choice</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SLIDE 2: Details & Round -->
+                <div class="carousel-slide">
+                    <div class="slide-content">
+                        <form id="form-step2" method="POST" action="{% url 'select_round' 0 %}">
+                            {% csrf_token %}
+                            <input type="hidden" id="selected_event_id" name="event_id">
+
+                            <div class="form-group">
+                                <label class="input-label" for="candidate_name">Candidate / Team Name</label>
+                                <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="e.g. John Doe" required>
+                            </div>
+
+                            <div class="grid-row">
+                                <div class="form-group half">
+                                    <label class="input-label" for="round_number">Round</label>
+                                    <div class="select-wrapper">
+                                        <select id="round_number" name="round_number" class="form-input" required>
+                                            <option value="">Select...</option>
+                                        </select>
+                                        <svg class="select-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group half">
+                                    <label class="input-label" for="round_password">Round Passcode</label>
+                                    <input type="password" id="round_password" name="round_password" class="form-input" placeholder="****" required>
+                                </div>
+                            </div>
+
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-secondary" onclick="moveSlide(0)">
+                                    Back
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    Start Test
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="slide-footer">
+                            <a href="{% url 'login_choice' %}" class="link-back">Cancel</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- VARIABLES --- */
+    :root {
+        --c-primary: #2563EB;       /* Enterprise Blue */
+        --c-primary-dark: #1D4ED8;
+        --c-bg: #F3F4F6;
+        --c-surface: #FFFFFF;
+        --c-text: #1F2937;
+        --c-text-muted: #6B7280;
+        --c-border: #E5E7EB;
+        --c-error: #EF4444;
+        --c-error-bg: #FEF2F2;
+        --c-ring: rgba(37, 99, 235, 0.2);
+        
+        --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        --radius: 12px;
+        --ease-spring: cubic-bezier(0.25, 1, 0.5, 1); /* Soft spring-like ease */
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--c-bg);
+        color: var(--c-text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* --- LAYOUT --- */
+    .enterprise-container {
+        width: 100%;
+        padding: 24px;
+        display: flex;
+        justify-content: center;
+    }
+
+    .login-card {
+        background: var(--c-surface);
+        width: 100%;
+        max-width: 500px;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+        padding: 40px;
+        border: 1px solid white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* --- HEADER --- */
+    .card-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+
+    .brand-pill {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--c-primary);
+        background: #EFF6FF;
+        padding: 4px 12px;
+        border-radius: 99px;
+        margin-bottom: 12px;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+        letter-spacing: -0.025em;
+    }
+
+    .card-subtitle {
+        color: var(--c-text-muted);
+        font-size: 0.875rem;
+    }
+
+    /* --- STEPPER --- */
+    .stepper-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+        position: relative;
+        padding: 0 40px;
+    }
+
+    .step-line {
+        flex: 1;
+        height: 2px;
+        background: var(--c-border);
+        margin: 0 16px;
+        position: relative;
+        top: -10px;
+        z-index: 0;
+    }
+
+    .step-line-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--c-primary);
+        transition: width 0.5s var(--ease-spring);
+    }
+
+    .step-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        z-index: 2;
+        position: relative;
+    }
+
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--c-surface);
+        border: 2px solid var(--c-border);
+        color: var(--c-text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        transition: all 0.4s var(--ease-spring);
+    }
+
+    .step-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--c-text-muted);
+        transition: color 0.4s;
+    }
+
+    /* Active State for Stepper */
+    .step-item.active .step-circle {
+        border-color: var(--c-primary);
+        background: var(--c-primary);
+        color: white;
+        transform: scale(1.1);
+        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    .step-item.active .step-label {
+        color: var(--c-primary);
+    }
+
+    /* --- SLIDER MECHANISM --- */
+    .carousel-viewport {
+        overflow: hidden;
+        width: 100%;
+        position: relative;
+    }
+
+    .carousel-track {
+        display: flex;
+        width: 200%; /* 2 slides */
+        transition: transform 0.6s var(--ease-spring);
+        will-change: transform;
+    }
+
+    .carousel-slide {
+        width: 50%;
+        flex-shrink: 0;
+        padding: 4px; /* Space for focus rings */
+    }
+
+    .slide-content {
+        padding: 0 4px; /* Inner spacing */
+    }
+
+    /* --- FORMS --- */
+    .form-group { margin-bottom: 20px; }
+    
+    .grid-row { display: flex; gap: 16px; }
+    .grid-row .half { flex: 1; }
+
+    .input-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: var(--c-text);
+    }
+
+    .form-input {
+        width: 100%;
+        height: 48px;
+        padding: 0 16px;
+        border: 1px solid var(--c-border);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        background: var(--c-surface);
+        transition: all 0.2s;
+        color: var(--c-text);
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 3px var(--c-ring);
+    }
+
+    .select-wrapper { position: relative; }
+    
+    select.form-input {
+        appearance: none;
+        padding-right: 40px;
+        cursor: pointer;
+    }
+
+    .select-icon {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        color: var(--c-text-muted);
+        pointer-events: none;
+    }
+
+    /* --- BUTTONS --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 48px;
+        padding: 0 24px;
+        border-radius: 8px;
+        font-weight: 500;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: var(--c-primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--c-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .btn-secondary {
+        background: transparent;
+        border: 1px solid var(--c-border);
+        color: var(--c-text);
+    }
+
+    .btn-secondary:hover {
+        background: #F9FAFB;
+        border-color: #D1D5DB;
+    }
+
+    .btn-group {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-icon { width: 18px; height: 18px; }
+
+    /* --- LINKS --- */
+    .slide-footer {
+        margin-top: 24px;
+        text-align: center;
+    }
+
+    .link-back {
+        color: var(--c-text-muted);
+        text-decoration: none;
+        font-size: 0.875rem;
+        transition: color 0.2s;
+    }
+
+    .link-back:hover { color: var(--c-primary); }
+
+    /* --- ALERTS --- */
+    .alert-container { margin-bottom: 20px; }
+
+    .alert {
+        padding: 12px 16px;
+        background: var(--c-error-bg);
+        border: 1px solid #FECACA;
+        color: #991B1B;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    .alert-success {
+        background: #ECFDF5;
+        border-color: #6EE7B7;
+        color: #065F46;
+        animation: slideDown 0.3s ease;
+    }
+
+    .alert-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* --- ANIMATIONS --- */
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    /* --- MOBILE --- */
+    @media (max-width: 480px) {
+        .login-card { padding: 24px; background: transparent; box-shadow: none; border: none; }
+        .stepper-wrapper { padding: 0; }
+        .grid-row { flex-direction: column; gap: 20px; }
+        .enterprise-container { padding: 0; align-items: flex-start; }
+    }
+</style>
+
+<script>
+    let selectedEventId = null;
+    let selectedEventRounds = [];
+
+    // --- Navigation & Animation Logic ---
+    function moveSlide(stepIndex) {
+        const track = document.getElementById('main-track');
+        const indicator1 = document.getElementById('indicator-1');
+        const indicator2 = document.getElementById('indicator-2');
+        const progressLine = document.getElementById('progress-line');
+
+        if (stepIndex === 1) {
+            // Move to Step 2
+            track.style.transform = 'translateX(-50%)';
+            indicator1.classList.remove('active');
+            indicator2.classList.add('active');
+            progressLine.style.width = '100%';
+            
+            // Clear errors
+            document.getElementById('alert-container').innerHTML = '';
+        } else {
+            // Back to Step 1
+            track.style.transform = 'translateX(0%)';
+            indicator2.classList.remove('active');
+            indicator1.classList.add('active');
+            progressLine.style.width = '0%';
+        }
+    }
+
+    function verifyEventPassword() {
+        const eventId = document.getElementById('event_id').value;
+        const eventPassword = document.getElementById('event_password').value;
+        const btn = document.getElementById('btn-verify');
+        const originalText = btn.innerHTML;
+
+        if (!eventId) {
+            showError('Please select an event.');
+            return;
+        }
+        if (!eventPassword) {
+            showError('Please enter the event password.');
+            return;
+        }
+
+        // Loading State
+        btn.disabled = true;
+        btn.innerHTML = '<span style="opacity:0.8">Verifying...</span>';
+
+        fetch(`/api/verify-event-password/${eventId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify({ password: eventPassword })
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+
+            if (data.correct) {
+                selectedEventId = eventId;
+                loadRounds(eventId);
+                moveSlide(1); // Trigger Animation
+                
+                // Update form action
+                document.getElementById('selected_event_id').value = selectedEventId;
+                document.getElementById('form-step2').action = `/login/candidate/select-round/${selectedEventId}/`;
+            } else {
+                showError('Incorrect event password.');
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            showError('Network error. Please try again.');
+            console.error('Error:', error);
+        });
+    }
+
+    function loadRounds(eventId) {
+        fetch(`/api/get-rounds/${eventId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const roundSelect = document.getElementById('round_number');
+                roundSelect.innerHTML = '<option value="">Select...</option>';
+                data.rounds.forEach(round => {
+                    const option = document.createElement('option');
+                    option.value = round;
+                    option.textContent = `Round ${round}`;
+                    roundSelect.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading rounds:', error));
+    }
+
+    function showError(message, type = 'error') {
+        const container = document.getElementById('alert-container');
+        const isError = type !== 'success';
+        
+        container.innerHTML = `
+            <div class="alert ${isError ? '' : 'alert-success'}">
+                <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="${isError 
+                            ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' 
+                            : 'M5 13l4 4L19 7'}" />
+                </svg>
+                <span>${message}</span>
+            </div>
+        `;
+    }
+
+    // Step 2 Validation
+    document.getElementById('form-step2').addEventListener('submit', function(e) {
+        const name = document.getElementById('candidate_name').value;
+        const round = document.getElementById('round_number').value;
+        const pass = document.getElementById('round_password').value;
+
+        if (!name.trim() || !round || !pass) {
+            e.preventDefault();
+            showError('All fields are required.');
+        }
+    });
+</script>
+{% endblock %}
