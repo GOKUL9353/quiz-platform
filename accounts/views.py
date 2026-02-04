@@ -509,17 +509,3 @@ def submit_quiz(request):
         logger.error(f"Unexpected error in submit_quiz: {str(e)}")
         logger.error(traceback.format_exc())
         return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
-        
-    except Event.DoesNotExist:
-        logger.error(f"Event not found with ID: {event_id}")
-        return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
-    except Round.DoesNotExist:
-        logger.error(f"Round not found - Event: {event_id}, Round: {round_number}")
-        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
-    except json.JSONDecodeError as e:
-        logger.error(f"Invalid JSON in request: {str(e)}")
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        logger.error(f"Unexpected error in submit_quiz: {str(e)}")
-        logger.error(traceback.format_exc())
-        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
