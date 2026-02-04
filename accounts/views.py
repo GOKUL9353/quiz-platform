@@ -4,18 +4,15 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
+from django.conf import settings
 from .models import Event, Round, Question, QuestionOption, CandidateEntry
-from .email_service import send_quiz_completion_email, send_round_owner_notification_with_pdf
+from .email_service import send_quiz_completion_email, send_quiz_results_email
 from datetime import datetime
 import json
-from io import BytesIO
-from reportlab.lib.pagesizes import letter, A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-import os
+import logging
+import traceback
+
+logger = logging.getLogger(__name__)
 
 
 # Home page - redirect to login choice
@@ -410,148 +407,9 @@ def quiz_test(request, event_id, round_number):
         return redirect('candidate_login')
 
 
-def generate_candidate_pdf(candidate_name, event_name, round_number, score, total_questions, answered_count, answers_dict, questions, time_taken_seconds=0):
-    """Generate a detailed PDF report for the candidate"""
-    buffer = BytesIO()
-    
-    # Create PDF document
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
-    story = []
-    
-    # Define styles
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#2563EB'),
-        spaceAfter=6,
-        alignment=TA_CENTER,
-        fontName='Helvetica-Bold'
-    )
-    
-    heading_style = ParagraphStyle(
-        'CustomHeading',
-        parent=styles['Heading2'],
-        fontSize=14,
-        textColor=colors.HexColor('#1E40AF'),
-        spaceAfter=12,
-        spaceBefore=12,
-        fontName='Helvetica-Bold'
-    )
-    
-    normal_style = ParagraphStyle(
-        'CustomNormal',
-        parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=6,
-        leading=12
-    )
-    
-    # Title
-    story.append(Paragraph("ASSESSMENT REPORT", title_style))
-    story.append(Spacer(1, 0.2*inch))
-    
-    # Format time taken
-    time_minutes = time_taken_seconds // 60
-    time_seconds = time_taken_seconds % 60
-    time_taken_str = f"{int(time_minutes)}m {int(time_seconds)}s"
-    
-    # Candidate and Event Information
-    info_data = [
-        ['Candidate Name:', candidate_name],
-        ['Event:', event_name],
-        ['Round:', f'Round {round_number}'],
-        ['Date:', datetime.now().strftime('%d-%m-%Y %H:%M:%S')],
-        ['Time Taken:', time_taken_str]
-    ]
-    
-    info_table = Table(info_data, colWidths=[2*inch, 4*inch])
-    info_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#EFF6FF')),
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#D1D5DB')),
-    ]))
-    story.append(info_table)
-    story.append(Spacer(1, 0.3*inch))
-    
-    # Score Summary
-    percentage = (score / total_questions * 100) if total_questions > 0 else 0
-    
-    summary_data = [
-        ['Total Questions', 'Attended', 'Correct', 'Score', 'Percentage'],
-        [str(total_questions), str(answered_count), str(score), f'{score}/{total_questions}', f'{percentage:.1f}%']
-    ]
-    
-    summary_table = Table(summary_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2563EB')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('TOPPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#F3F4F6')),
-        ('FONTSIZE', (0, 1), (-1, 1), 10),
-        ('BOTTOMPADDING', (0, 1), (-1, 1), 10),
-        ('TOPPADDING', (0, 1), (-1, 1), 10),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#D1D5DB')),
-    ]))
-    story.append(summary_table)
-    story.append(Spacer(1, 0.3*inch))
-    
-    # Detailed Answers
-    story.append(Paragraph("DETAILED ANSWER ANALYSIS", heading_style))
-    
-    for question in questions:
-        question_num = list(questions).index(question) + 1
-        user_answer_id = answers_dict.get(f'question_{question.id}')
-        
-        # Get the correct answer
-        correct_option = question.options.filter(is_correct=True).first()
-        user_option = question.options.filter(id=user_answer_id).first() if user_answer_id else None
-        
-        # Question text
-        story.append(Paragraph(f"<b>Q{question_num}. {question.question_text}</b>", normal_style))
-        
-        # Options with answer marking
-        for option in question.options.all():
-            is_user_selected = user_option and option.id == user_option.id
-            is_correct = option.is_correct
-            
-            if is_user_selected and is_correct:
-                marker = "✓ [CORRECT]"
-                color = '#10B981'
-            elif is_user_selected and not is_correct:
-                marker = "✗ [INCORRECT]"
-                color = '#EF4444'
-            elif is_correct and not is_user_selected:
-                marker = "→ [CORRECT ANSWER]"
-                color = '#3B82F6'
-            else:
-                marker = ""
-                color = '#6B7280'
-            
-            text = f"<font color='{color}'>{option.get_option_number_display()}. {option.option_text} {marker}</font>"
-            story.append(Paragraph(text, normal_style))
-        
-        story.append(Spacer(1, 0.15*inch))
-    
-    # Build PDF
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
-
-
 @csrf_exempt
 def submit_quiz(request):
-    """Handle quiz submission and generate PDF"""
+    """Handle quiz submission and send results email"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
@@ -567,8 +425,10 @@ def submit_quiz(request):
         round_obj = Round.objects.get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
         
-        # Get candidate info from session (will be empty for API calls, but let's handle it)
+        # Get candidate info
         candidate_name = data.get('candidate_name', 'Anonymous')
+        
+        logger.info(f"Submitting quiz for {candidate_name} - Event: {event.name}, Round: {round_number}")
         
         # Calculate score
         score = 0
@@ -589,60 +449,77 @@ def submit_quiz(request):
                 # Check if correct
                 if option.is_correct:
                     score += 1
-            except (Question.DoesNotExist, QuestionOption.DoesNotExist, ValueError):
+            except (Question.DoesNotExist, QuestionOption.DoesNotExist, ValueError) as e:
+                logger.warning(f"Error processing answer for question {question_id_str}: {str(e)}")
                 continue
-        
-        # Generate PDF
-        pdf_buffer = generate_candidate_pdf(
-            candidate_name=candidate_name,
-            event_name=event.name,
-            round_number=round_number,
-            score=score,
-            total_questions=questions.count(),
-            answered_count=answered_count,
-            answers_dict=answers_dict,
-            questions=questions,
-            time_taken_seconds=time_taken_seconds
-        )
-        
-        # Convert PDF to base64 for inline download
-        import base64
-        pdf_base64 = base64.b64encode(pdf_buffer.getvalue()).decode()
         
         total_questions = questions.count()
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
         
-        # Send email to round owner with PDF attachment if email is configured
-        if round_obj.owner_email:
-            pdf_filename = f'{candidate_name}_{event.name}_Round{round_number}_Report.pdf'
-            send_round_owner_notification_with_pdf(
-                owner_email=round_obj.owner_email,
-                event_name=event.name,
-                round_number=round_number,
-                candidate_name=candidate_name,
-                score=score,
-                total_questions=total_questions,
-                pdf_buffer=pdf_buffer,
-                pdf_filename=pdf_filename
-            )
+        logger.info(f"Quiz submission completed - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
         
+        # Send results email to round owner
+        if round_obj.owner_email:
+            try:
+                logger.info(f"📧 Attempting to send results email to owner: {round_obj.owner_email}")
+                
+                # Check if email is configured
+                if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+                    logger.warning('⚠️  Email not configured (missing EMAIL_HOST_USER or EMAIL_HOST_PASSWORD) - skipping owner notification')
+                else:
+                    logger.info(f"✓ Email credentials found, sending to {round_obj.owner_email}")
+                    result = send_quiz_results_email(
+                        owner_email=round_obj.owner_email,
+                        event_name=event.name,
+                        round_number=round_number,
+                        candidate_name=candidate_name,
+                        score=score,
+                        total_questions=total_questions,
+                        time_taken_seconds=time_taken_seconds
+                    )
+                    if result:
+                        logger.info(f"✅ Email sent successfully to {round_obj.owner_email}")
+                    else:
+                        logger.error(f"❌ Email failed to send to {round_obj.owner_email} (check SMTP settings)")
+            except Exception as email_error:
+                logger.error(f"❌ Exception while sending email: {type(email_error).__name__}: {str(email_error)}")
+                logger.error(traceback.format_exc())
+        else:
+            logger.warning(f"⚠️  Round {round_number} has no owner_email set - cannot send results")
+        
+        logger.info(f"✓ Quiz submission completed successfully")
         return JsonResponse({
             'success': True,
             'score': score,
             'total_questions': total_questions,
             'attended': answered_count,
-            'percentage': percentage,
-            'pdf_base64': pdf_base64,
-            'filename': f'{candidate_name}_{event.name}_Round{round_number}_Report.pdf'
+            'percentage': percentage
         })
         
     except Event.DoesNotExist:
+        logger.error(f"Event not found with ID: {event_id}")
         return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
     except Round.DoesNotExist:
+        logger.error(f"Round not found - Event: {event_id}, Round: {round_number}")
         return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in request: {str(e)}")
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        logger.error(f"Unexpected error in submit_quiz: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
+        
+    except Event.DoesNotExist:
+        logger.error(f"Event not found with ID: {event_id}")
+        return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
+    except Round.DoesNotExist:
+        logger.error(f"Round not found - Event: {event_id}, Round: {round_number}")
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in request: {str(e)}")
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Unexpected error in submit_quiz: {str(e)}")
+        logger.error(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)

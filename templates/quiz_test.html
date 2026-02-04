@@ -874,18 +874,26 @@
                     time_taken_seconds: timeTaken
                 })
             })
-            .then(r => r.json())
+            .then(r => {
+                if (!r.ok) {
+                    return r.json().then(data => {
+                        throw new Error(data.error || `Server error: ${r.status}`);
+                    });
+                }
+                return r.json();
+            })
             .then(data => {
                 if (data.success) {
                     showResults(data);
                 } else {
-                    alert('Error: ' + data.error);
+                    alert('Error: ' + (data.error || 'Unknown error occurred'));
+                    console.error('Submission failed:', data);
                     els.submitModal.classList.remove('active');
                 }
             })
             .catch(e => {
-                console.error(e);
-                alert('Connection error. Please try again.');
+                console.error('Submission error:', e);
+                alert('Error: ' + (e.message || 'Connection error. Please try again.'));
                 els.submitModal.classList.remove('active');
             });
         }
@@ -896,24 +904,8 @@
             document.getElementById('resPercent').textContent = Math.round(data.percentage * 10) / 10;
             els.stLoading.style.display = 'none';
             els.stResult.style.display = 'block';
-            downloadPDF(data.pdf_base64, data.filename);
-        }
-
-        function downloadPDF(b64, name) {
-            const bin = atob(b64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) {
-                bytes[i] = bin.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], {type: 'application/pdf'});
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = name;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
+            
+            console.log('Results displayed to candidate');
         }
 
         history.pushState(null, null, location.href);

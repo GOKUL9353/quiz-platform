@@ -1,11 +1,14 @@
 """
 Email service module for sending quiz-related emails
+Optimized for production on Render with proper error logging and timeout handling
 """
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 import logging
+import socket
+import smtplib
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +136,9 @@ Quiz Platform
         return False
 
 
-def send_round_owner_notification_with_pdf(owner_email, event_name, round_number, candidate_name, score, total_questions, pdf_buffer, pdf_filename):
+def send_quiz_results_email(owner_email, event_name, round_number, candidate_name, score, total_questions, time_taken_seconds):
     """
-    Send notification email to round owner with candidate's score and PDF attachment
+    Send quiz results email to round owner with candidate performance in table format
     
     Args:
         owner_email (str): Email of the round owner
@@ -144,16 +147,29 @@ def send_round_owner_notification_with_pdf(owner_email, event_name, round_number
         candidate_name (str): Name of the candidate
         score (int): Number of correct answers
         total_questions (int): Total number of questions
-        pdf_buffer: BytesIO object containing the PDF
-        pdf_filename (str): Name for the PDF file attachment
+        time_taken_seconds (int): Time taken to complete quiz in seconds
     
     Returns:
         bool: True if email sent successfully, False otherwise
     """
     try:
+        # Validate email configuration first
+        if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
+            logger.error('Email not configured: EMAIL_HOST_USER or EMAIL_HOST_PASSWORD missing')
+            return False
+        
+        if not owner_email:
+            logger.warning('Owner email is empty, skipping notification')
+            return False
+        
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
         
-        subject = f'Quiz Submission Report - {event_name} Round {round_number} - {candidate_name}'
+        # Format time
+        time_minutes = time_taken_seconds // 60
+        time_seconds = time_taken_seconds % 60
+        time_taken_str = f"{int(time_minutes)}m {int(time_seconds)}s"
+        
+        subject = f'Quiz Results - {event_name} Round {round_number} - {candidate_name}'
         
         context = {
             'owner_email': owner_email,
@@ -162,23 +178,26 @@ def send_round_owner_notification_with_pdf(owner_email, event_name, round_number
             'candidate_name': candidate_name,
             'score': score,
             'total_questions': total_questions,
-            'percentage': percentage
+            'percentage': percentage,
+            'time_taken': time_taken_str
         }
         
-        html_message = render_owner_notification_html(context)
+        html_message = render_quiz_results_html(context)
         plain_message = f"""
-Quiz Submission Report
+Quiz Results
 
+Candidate: {candidate_name}
 Event: {event_name}
 Round: {round_number}
-Candidate: {candidate_name}
-Score: {score}/{total_questions} ({percentage:.1f}%)
-
-Please see the attached PDF for detailed results.
+Score: {score}/{total_questions}
+Percentage: {percentage:.1f}%
+Time Taken: {time_taken_str}
 
 Regards,
 Quiz Platform
         """
+        
+        logger.info(f"Preparing results email to {owner_email}")
         
         email = EmailMultiAlternatives(
             subject=subject,
@@ -188,17 +207,24 @@ Quiz Platform
         )
         email.attach_alternative(html_message, "text/html")
         
-        # Attach PDF
-        pdf_buffer.seek(0)  # Reset buffer position to start
-        email.attach(pdf_filename, pdf_buffer.read(), 'application/pdf')
+        # Send with timeout
+        logger.info(f"Sending results email to {owner_email} (timeout: {settings.EMAIL_TIMEOUT}s)")
+        email.send(fail_silently=False)
         
-        email.send()
-        
-        logger.info(f"Owner notification email with PDF sent to {owner_email}")
+        logger.info(f"✓ Quiz results email successfully sent to {owner_email}")
         return True
         
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP Authentication failed: {str(e)} - Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD")
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error sending email to {owner_email}: {str(e)}")
+        return False
+    except socket.timeout as e:
+        logger.error(f"Email send timeout to {owner_email}: {str(e)} - Consider increasing EMAIL_TIMEOUT")
+        return False
     except Exception as e:
-        logger.error(f"Error sending owner notification email with PDF to {owner_email}: {str(e)}")
+        logger.error(f"Error sending quiz results email to {owner_email}: {type(e).__name__}: {str(e)}")
         return False
 
 
@@ -277,46 +303,63 @@ def render_quiz_completion_html(context):
     return html
 
 
-def render_owner_notification_html(context):
-    """Render HTML template for owner notification email"""
-    percentage = context['percentage']
+def render_quiz_results_html(context):
+    """Render HTML template for quiz results email with table format"""
     html = f"""
     <html>
-        <body style="font-family: 'Inter', Arial, sans-serif; color: #202124;">
+        <body style="font-family: 'Inter', Arial, sans-serif; color: #202124; background: #f5f5f5;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <!-- Header -->
                 <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #1a73e8; margin: 0;">New Quiz Submission</h1>
+                    <h1 style="color: #2563EB; margin: 0; font-size: 28px;">Quiz Results</h1>
+                    <p style="color: #5f6368; margin: 5px 0 0 0;">{context['event_name']} - Round {context['round_number']}</p>
                 </div>
                 
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <p style="margin: 0;">A candidate has completed the quiz for <strong>{context['event_name']} - Round {context['round_number']}</strong></p>
-                </div>
-                
-                <div style="background: #ffffff; border: 1px solid #dadce0; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h2 style="color: #1a73e8; margin-top: 0;">Submission Details</h2>
-                    
+                <!-- Results Table -->
+                <div style="background: #ffffff; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                     <table style="width: 100%; border-collapse: collapse;">
-                        <tr style="border-bottom: 1px solid #e8eaed;">
-                            <td style="padding: 10px 0; color: #5f6368;"><strong>Candidate Name:</strong></td>
-                            <td style="padding: 10px 0; text-align: right; color: #202124;">{context['candidate_name']}</td>
+                        <tr style="border-bottom: 2px solid #e8eaed;">
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Candidate Name</td>
+                            <td style="padding: 12px 0; text-align: right; color: #202124; font-weight: 600; font-size: 16px;">{context['candidate_name']}</td>
                         </tr>
                         <tr style="border-bottom: 1px solid #e8eaed;">
-                            <td style="padding: 10px 0; color: #5f6368;"><strong>Event:</strong></td>
-                            <td style="padding: 10px 0; text-align: right; color: #202124;">{context['event_name']}</td>
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Event</td>
+                            <td style="padding: 12px 0; text-align: right; color: #202124;">{context['event_name']}</td>
                         </tr>
                         <tr style="border-bottom: 1px solid #e8eaed;">
-                            <td style="padding: 10px 0; color: #5f6368;"><strong>Round:</strong></td>
-                            <td style="padding: 10px 0; text-align: right; color: #202124;">{context['round_number']}</td>
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Round Number</td>
+                            <td style="padding: 12px 0; text-align: right; color: #202124;">Round {context['round_number']}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e8eaed;">
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Total Questions</td>
+                            <td style="padding: 12px 0; text-align: right; color: #202124;">{context['total_questions']}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e8eaed;">
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Correct Answers</td>
+                            <td style="padding: 12px 0; text-align: right; color: #10B981; font-weight: 600; font-size: 16px;">{context['score']}/{context['total_questions']}</td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e8eaed;">
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Percentage</td>
+                            <td style="padding: 12px 0; text-align: right; color: #2563EB; font-weight: 600; font-size: 16px;">{context['percentage']:.1f}%</td>
                         </tr>
                         <tr>
-                            <td style="padding: 10px 0; color: #5f6368;"><strong>Score:</strong></td>
-                            <td style="padding: 10px 0; text-align: right; color: #202124;">{context['score']}/{context['total_questions']} ({percentage:.1f}%)</td>
+                            <td style="padding: 12px 0; color: #5f6368; font-weight: 500;">Time Taken</td>
+                            <td style="padding: 12px 0; text-align: right; color: #202124; font-weight: 600;">{context['time_taken']}</td>
                         </tr>
                     </table>
                 </div>
                 
-                <div style="text-align: center; color: #5f6368; font-size: 12px;">
-                    <p>You are receiving this email because you are the owner/coordinator of this round.</p>
+                <!-- Status Badge -->
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="padding: 12px 20px; border-radius: 6px; display: inline-block; font-weight: 600; background: {'#E6F4EA' if context['percentage'] >= 50 else '#FCE8E6'}; color: {'#1E8E3E' if context['percentage'] >= 50 else '#D93025'};">
+                        {'✓ PASSED' if context['percentage'] >= 50 else '✗ NEEDS IMPROVEMENT'}
+                    </div>
+                </div>
+                
+                <!-- Footer -->
+                <div style="text-align: center; color: #5f6368; font-size: 12px; border-top: 1px solid #e8eaed; padding-top: 20px;">
+                    <p style="margin: 0;">This is an automated notification from the Quiz Platform.</p>
+                    <p style="margin: 5px 0 0 0;">You are receiving this because you are the coordinator of this round.</p>
                 </div>
             </div>
         </body>
