@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-tf)a)p#cyzci4nj3sh6u_0rv3h_7zjwy%)qf4!fzgepf=%9z99'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['.onrender.com']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -128,6 +128,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'gokulsrini820@gmail.com'
 EMAIL_HOST_PASSWORD = 'epjc jgba dseb azuu'
 DEFAULT_FROM_EMAIL = 'gokulsrini820@gmail.com'
+EMAIL_TIMEOUT = 10
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
