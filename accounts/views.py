@@ -4,9 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
-from django.conf import settings
 from .models import Event, Round, Question, QuestionOption, CandidateEntry
-from .email_service import send_quiz_completion_email, send_quiz_results_email
+from .email_service import send_quiz_completion_email, send_quiz_results_email, send_email_with_brevo
 from datetime import datetime
 import json
 import logging
@@ -486,6 +485,34 @@ def submit_quiz(request):
                 logger.error(traceback.format_exc())
         else:
             logger.warning(f"⚠️  Round {round_number} has no owner_email set - cannot send results")
+        
+        # Send results email to the candidate
+        candidate_email = data.get('candidate_email')
+        if candidate_email:
+            subject = f"Your Quiz Results for {event.name} - Round {round_number}"
+            html_content = f"""
+                <p>Dear {candidate_name},</p>
+                <p>Thank you for participating in the quiz.</p>
+                <p>Your Score: {score}/{total_questions} ({percentage:.2f}%)</p>
+                <p>Time Taken: {time_taken_seconds} seconds</p>
+                <p>Best regards,<br>Quiz Platform Team</p>
+            """
+            plain_content = f"""
+Dear {candidate_name},
+
+Thank you for participating in the quiz.
+
+Your Score: {score}/{total_questions} ({percentage:.2f}%)
+Time Taken: {time_taken_seconds} seconds
+
+Best regards,
+Quiz Platform Team
+            """
+            email_sent = send_email_with_brevo(candidate_email, subject, html_content, plain_content)
+            if email_sent:
+                logger.info(f"Results email sent to {candidate_email}")
+            else:
+                logger.error(f"Failed to send results email to {candidate_email}")
         
         logger.info(f"✓ Quiz submission completed successfully")
         return JsonResponse({

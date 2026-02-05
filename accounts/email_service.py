@@ -9,6 +9,7 @@ from django.conf import settings
 import logging
 import socket
 import smtplib
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -58,18 +59,8 @@ Best regards,
 Quiz Platform Team
         """
         
-        # Send email
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[candidate_email]
-        )
-        email.attach_alternative(html_message, "text/html")
-        email.send()
-        
-        logger.info(f"Quiz completion email sent to {candidate_email}")
-        return True
+        # Send email using Brevo
+        return send_email_with_brevo(candidate_email, subject, html_message, plain_message)
         
     except Exception as e:
         logger.error(f"Error sending quiz completion email to {candidate_email}: {str(e)}")
@@ -153,11 +144,6 @@ def send_quiz_results_email(owner_email, event_name, round_number, candidate_nam
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Validate email configuration first
-        if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-            logger.error('Email not configured: EMAIL_HOST_USER or EMAIL_HOST_PASSWORD missing')
-            return False
-        
         if not owner_email:
             logger.warning('Owner email is empty, skipping notification')
             return False
@@ -199,32 +185,11 @@ Quiz Platform
         
         logger.info(f"Preparing results email to {owner_email}")
         
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=plain_message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[owner_email]
-        )
-        email.attach_alternative(html_message, "text/html")
+        # Send email using Brevo
+        return send_email_with_brevo(owner_email, subject, html_message, plain_message)
         
-        # Send with timeout
-        logger.info(f"Sending results email to {owner_email} (timeout: {settings.EMAIL_TIMEOUT}s)")
-        email.send(fail_silently=False)
-        
-        logger.info(f"✓ Quiz results email successfully sent to {owner_email}")
-        return True
-        
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"SMTP Authentication failed: {str(e)} - Check EMAIL_HOST_USER and EMAIL_HOST_PASSWORD")
-        return False
-    except smtplib.SMTPException as e:
-        logger.error(f"SMTP error sending email to {owner_email}: {str(e)}")
-        return False
-    except socket.timeout as e:
-        logger.error(f"Email send timeout to {owner_email}: {str(e)} - Consider increasing EMAIL_TIMEOUT")
-        return False
     except Exception as e:
-        logger.error(f"Error sending quiz results email to {owner_email}: {type(e).__name__}: {str(e)}")
+        logger.error(f"Error sending quiz results email to {owner_email}: {str(e)}")
         return False
 
 
@@ -255,6 +220,47 @@ def send_test_email(recipient_email):
         
     except Exception as e:
         logger.error(f"Error sending test email to {recipient_email}: {str(e)}")
+        return False
+
+
+def send_email_with_brevo(to_email, subject, html_content, plain_content):
+    """
+    Send an email using Brevo API.
+
+    Args:
+        to_email (str): Recipient email address.
+        subject (str): Email subject.
+        html_content (str): HTML content of the email.
+        plain_content (str): Plain text content of the email.
+
+    Returns:
+        bool: True if email sent successfully, False otherwise.
+    """
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": settings.BREVO_API_KEY,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"email": settings.DEFAULT_FROM_EMAIL},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html_content,
+        "textContent": plain_content
+    }
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        try:
+            response.raise_for_status()
+            logger.info(f"Email sent successfully to {to_email}. Response: {response.json()}")
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to send email to {to_email}: {e}. Response: {response.text}")
+            return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error sending email to {to_email}: {str(e)}")
         return False
 
 
