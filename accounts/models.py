@@ -1,5 +1,6 @@
 from django.db import models
 from datetime import date
+from django.utils import timezone
 
 # Create your models here.
 
@@ -8,7 +9,6 @@ class Event(models.Model):
     name = models.CharField(max_length=255)
     date = models.DateField(default=date.today)
     number_of_rounds = models.IntegerField(default=1)
-    event_access_password = models.CharField(max_length=50, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -27,8 +27,8 @@ class Round(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='rounds')
     round_number = models.IntegerField()
     duration_minutes = models.IntegerField(default=60)
-    access_password = models.CharField(max_length=50, blank=True, null=True)
-    owner_email = models.EmailField(max_length=255, blank=True, null=True)
+    access_code = models.CharField(max_length=10, blank=True, null=True)
+    is_started = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -43,7 +43,13 @@ class CandidateEntry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='candidate_entries')
     round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='candidate_entries')
     candidate_name = models.CharField(max_length=255)
+    is_waiting = models.BooleanField(default=True)
+    is_submitted = models.BooleanField(default=False)
+    score = models.IntegerField(default=0, null=True, blank=True)
+    total_questions = models.IntegerField(default=0, null=True, blank=True)
+    time_taken_seconds = models.IntegerField(default=0, null=True, blank=True)
     entry_time = models.DateTimeField(auto_now_add=True)
+    last_active = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.candidate_name} - {self.round}"

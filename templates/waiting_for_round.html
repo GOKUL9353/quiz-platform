@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>Waiting for Round - Quiz Platform</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1a73e8;
+            --surface: #ffffff;
+            --surface-secondary: #f8f9fa;
+            --text-primary: #202124;
+            --text-secondary: #5f6368;
+            --border-light: #e8eaed;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--surface-secondary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 48px 32px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px rgba(60, 64, 67, 0.15);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .waiting-icon {
+            font-size: 80px;
+            color: var(--primary);
+            margin-bottom: 24px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .waiting-icon.material-icons-outlined {
+            font-size: 80px;
+            display: inline-block;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .waiting-message {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            line-height: 1.6;
+        }
+
+        .candidate-info {
+            background: var(--surface-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 32px;
+            text-align: left;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff3cd;
+            color: #856404;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+
+        .status-badge .material-icons-outlined {
+            font-size: 18px;
+        }
+
+        .dots {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 8px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--primary);
+            border-radius: 50%;
+            animation: pulse 1.4s infinite;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+            0%, 60%, 100% {
+                opacity: 0.3;
+            }
+            30% {
+                opacity: 1;
+            }
+        }
+
+        .logout-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+
+        .logout-btn:hover {
+            background: var(--surface-secondary);
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 32px 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .waiting-icon {
+                font-size: 60px;
+            }
+
+            .info-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="waiting-icon" id="waiting-icon">
+            <span class="material-icons-outlined">schedule</span>
+        </div>
+
+        <h1 id="waiting-title">Waiting for Admin</h1>
+
+        <div class="status-badge" id="status-badge">
+            <span class="material-icons-outlined">hourglass_empty</span>
+            <span>Waiting<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></span>
+        </div>
+
+        <p class="waiting-message" id="waiting-msg">
+            The admin is preparing the round. Please wait while they verify the setup and start the round.
+        </p>
+
+        <div class="candidate-info">
+            <div class="info-row">
+                <span class="info-label">Event</span>
+                <span class="info-value">{{ event.name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Round</span>
+                <span class="info-value">{{ round.round_number }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Your Name</span>
+                <span class="info-value">{{ candidate_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Duration</span>
+                <span class="info-value">{{ round.duration_minutes }} minutes</span>
+            </div>
+        </div>
+
+        <p class="waiting-message" id="redirect-msg" style="display: none; color: #1e8e3e; font-weight: 600;">
+            🎉 Round has started! Redirecting to quiz in 2 seconds...
+        </p>
+
+        <div id="debug-info" style="background: #f0f0f0; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 12px; color: #666; text-align: left; font-family: monospace; max-height: 100px; overflow-y: auto;">
+            <div>Debug: Checking round status...</div>
+        </div>
+
+        <a href="{% url 'candidate_login' %}" class="logout-btn">
+            <span class="material-icons-outlined">logout</span>
+            <span>Logout</span>
+        </a>
+    </div>
+
+    <script>
+        let candidateEntryId = {{ candidate_entry_id|default:"null" }};
+        const eventId = {{ event.id }};
+        const roundNumber = {{ round.round_number }};
+        let isRedirecting = false;
+        const debugBox = document.getElementById('debug-info');
+
+        // Fallback if candidate_entry_id is None
+        if (!candidateEntryId || candidateEntryId === null) {
+            candidateEntryId = 0;
+        }
+
+        function addDebug(msg) {
+            const time = new Date().toLocaleTimeString();
+            debugBox.innerHTML += `<div>[${time}] ${msg}</div>`;
+            debugBox.scrollTop = debugBox.scrollHeight;
+        }
+
+        addDebug(`Page loaded - Candidate: ${candidateEntryId}, Event: ${eventId}, Round: ${roundNumber}`);
+
+        // Update candidate's last_active timestamp every 15 seconds
+        function updateCandidateActivity() {
+            if (candidateEntryId <= 0) return;
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            fetch(`/api/update-candidate-active/${candidateEntryId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(data => {
+                addDebug(`✓ Activity pulse sent`);
+            })
+            .catch(error => {
+                addDebug(`✗ Activity error: ${error.message}`);
+            });
+        }
+
+        // Poll every 1 second to check if the round has started
+        function checkRoundStatus() {
+            if (isRedirecting) return;
+            
+            fetch(`/api/check-round-started/${eventId}/${roundNumber}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const startedValue = data.started;
+                    addDebug(`→ Status: started=${startedValue}`);
+                    
+                    if (startedValue === true) {
+                        addDebug(`✅ ROUND STARTED - PREPARING REDIRECT...`);
+                        isRedirecting = true;
+                        
+                        // Show success message
+                        document.getElementById('waiting-icon').style.display = 'none';
+                        document.getElementById('waiting-title').textContent = 'Round Started!';
+                        document.getElementById('status-badge').style.display = 'none';
+                        document.getElementById('waiting-msg').style.display = 'none';
+                        document.getElementById('redirect-msg').style.display = 'block';
+                        
+                        // Redirect after 2 seconds
+                        setTimeout(() => {
+                            addDebug(`🚀 NOW REDIRECTING...`);
+                            window.location.replace(`/quiz-test/${eventId}/${roundNumber}/`);
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    addDebug(`✗ Status check error: ${error.message}`);
+                });
+        }
+
+        // Update activity immediately when page loads
+        updateCandidateActivity();
+
+        // Check status immediately when page loads
+        checkRoundStatus();
+
+        // Check status every 1 second
+        setInterval(checkRoundStatus, 1000);
+        
+        // Update activity every 15 seconds to keep candidate "active"
+        setInterval(updateCandidateActivity, 15000);
+    </script>
+</body>
+</html>

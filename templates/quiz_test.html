@@ -774,12 +774,15 @@
             roundNum: {{ round_number }},
             candidateName: '{{ candidate_name }}',
             totalQuestions: {{ total_questions }},
-            submitUrl: '{% url "submit_quiz" %}'
+            submitUrl: '{% url "submit_quiz" %}',
+            candidateEntryId: {{ candidate_entry_id|default:"null" }},
+            updateActivityUrl: '{% url "update_candidate_active" 0 %}' // Will replace 0 with actual ID
         };
 
         let state = {
             timeLeft: CONFIG.durationMinutes * 60,
             timerInterval: null,
+            activityInterval: null,
             started: false
         };
 
@@ -794,12 +797,29 @@
             stResult: document.getElementById('resultState')
         };
 
+        // Function to update candidate's last_active timestamp
+        function updateCandidateActivity() {
+            if (CONFIG.candidateEntryId && state.started) {
+                fetch(`/api/update-candidate-active/${CONFIG.candidateEntryId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                }).catch(e => console.log('Activity update failed:', e));
+            }
+        }
+
         function startAssessment() {
             els.startModal.classList.remove('active');
             els.layout.style.filter = 'none';
             state.started = true;
             updateTimerUI();
             state.timerInterval = setInterval(tick, 1000);
+            // Update activity every 10 seconds while quiz is running
+            state.activityInterval = setInterval(updateCandidateActivity, 10000);
+            // Initial activity update
+            updateCandidateActivity();
         }
 
         function tick() {
@@ -854,11 +874,23 @@
             const formData = new FormData(els.form);
             const answers = {};
             for (let [k, v] of formData.entries()) {
-                if (k.startsWith('question_')) answers[k] = v;
+                if (k.startsWith('question_')) {
+                    answers[k] = v;
+                }
             }
 
             const totalTime = CONFIG.durationMinutes * 60;
             const timeTaken = totalTime - state.timeLeft;
+
+            const payload = {
+                event_id: CONFIG.eventId,
+                round_number: CONFIG.roundNum,
+                candidate_name: CONFIG.candidateName,
+                answers: answers,
+                time_taken_seconds: timeTaken
+            };
+
+            console.log('Submitting quiz with payload:', payload);
 
             fetch(CONFIG.submitUrl, {
                 method: 'POST',
@@ -866,23 +898,19 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
-                body: JSON.stringify({
-                    event_id: CONFIG.eventId,
-                    round_number: CONFIG.roundNum,
-                    candidate_name: CONFIG.candidateName,
-                    answers: answers,
-                    time_taken_seconds: timeTaken
-                })
+                body: JSON.stringify(payload)
             })
             .then(r => {
+                console.log('Response status:', r.status);
                 if (!r.ok) {
-                    return r.json().then(data => {
-                        throw new Error(data.error || `Server error: ${r.status}`);
+                    return r.text().then(text => {
+                        throw new Error(`Server error: ${r.status} - ${text}`);
                     });
                 }
                 return r.json();
             })
             .then(data => {
+                console.log('Response data:', data);
                 if (data.success) {
                     showResults(data);
                 } else {
@@ -893,20 +921,75 @@
             })
             .catch(e => {
                 console.error('Submission error:', e);
-                alert('Error: ' + (e.message || 'Connection error. Please try again.'));
+                // Hide loading state on error
+                els.stLoading.style.display = 'none';
+                els.stConfirm.style.display = 'block';
                 els.submitModal.classList.remove('active');
+                alert('Error: ' + (e.message || 'Connection error. Please try again.'));
             });
         }
 
         function showResults(data) {
-            document.getElementById('resScore').textContent = data.score;
-            document.getElementById('resTotal').textContent = data.total_questions;
-            document.getElementById('resPercent').textContent = Math.round(data.percentage * 10) / 10;
-            els.stLoading.style.display = 'none';
-            els.stResult.style.display = 'block';
+            // Clean up activity tracking interval
+            if (state.activityInterval) {
+                clearInterval(state.activityInterval);
+            }
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+            }
             
-            console.log('Results displayed to candidate');
+            try {
+                document.getElementById('resScore').textContent = data.score || 0;
+                document.getElementById('resTotal').textContent = data.total_questions || 0;
+                document.getElementById('resPercent').textContent = Math.round((data.percentage || 0) * 10) / 10;
+                
+                console.log('Updating result elements:', {
+                    score: data.score,
+                    total: data.total_questions,
+                    percent: data.percentage
+                });
+                
+                els.stLoading.style.display = 'none';
+                els.stResult.style.display = 'block';
+                
+                console.log('Results displayed to candidate successfully');
+            } catch (e) {
+                console.error('Error displaying results:', e);
+                alert('Error displaying results. Please refresh the page.');
+            }
         }
+
+        // Prevent page refresh - track page load using sessionStorage
+        const pageLoadKey = 'quiz_page_loaded_{{ event.id }}_{{ round_number }}_{{ candidate_entry_id }}';
+        
+        // Check if page was already loaded (refresh attempt)
+        if (sessionStorage.getItem(pageLoadKey)) {
+            // This is a refresh attempt - page will be redirected server-side
+            console.warn('Page refresh detected - redirecting...');
+        }
+        
+        // Mark page as loaded
+        sessionStorage.setItem(pageLoadKey, 'true');
+        
+        // Prevent refresh using Ctrl+R, Cmd+R, F5
+        document.addEventListener('keydown', function(e) {
+            if (state.started && (e.ctrlKey || e.metaKey) && e.code === 'KeyR') {
+                e.preventDefault();
+                alert('Page refresh is not allowed during the quiz. Your session will be saved.');
+                return false;
+            }
+            if (state.started && e.key === 'F5') {
+                e.preventDefault();
+                alert('Page refresh is not allowed during the quiz. Your session will be saved.');
+                return false;
+            }
+        });
+
+        // Clean up intervals on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            if (state.activityInterval) clearInterval(state.activityInterval);
+        });
 
         history.pushState(null, null, location.href);
         window.onpopstate = function () {

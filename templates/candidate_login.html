@@ -1,594 +1,310 @@
 {% extends 'base.html' %}
 
-{% block title %}Candidate Login - Quiz Platform{% endblock %}
+{% block title %}Join Quiz - Quiz Platform{% endblock %}
 
 {% block content %}
 <!-- Google Fonts: Inter (Professional Sans-Serif) -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<div class="enterprise-container">
+<div class="quiz-login-container">
     <div class="login-card">
-        
-        <!-- Brand Header -->
+        <!-- Card Header with Gradient -->
         <div class="card-header">
-            <div class="brand-pill">Assessment Portal</div>
-            <h1 class="card-title">Candidate Login</h1>
-            <p class="card-subtitle">Please complete the steps below to begin.</p>
+            <svg class="header-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-4-6l2.293-2.293a1 1 0 111.414 1.414L12 7m0 0l-2.707-2.707a1 1 0 00-1.414 1.414L12 7" />
+            </svg>
+            <h1 class="header-title">Join Quiz</h1>
+            <p class="header-subtitle">Enter your details and access code</p>
         </div>
 
-        <!-- Animated Progress Stepper -->
-        <div class="stepper-wrapper">
-            <div class="step-item active" id="indicator-1">
-                <div class="step-circle">1</div>
-                <div class="step-label">Event</div>
-            </div>
-            <div class="step-line">
-                <div class="step-line-fill" id="progress-line"></div>
-            </div>
-            <div class="step-item" id="indicator-2">
-                <div class="step-circle">2</div>
-                <div class="step-label">Round</div>
-            </div>
-        </div>
-
-        <!-- Alert System -->
+        <!-- Alert Messages -->
         <div id="alert-container"></div>
         {% if messages %}
             {% for message in messages %}
                 <script>
                     document.addEventListener('DOMContentLoaded', () => {
-                        showError("{{ message }}", "{{ message.tags }}");
+                        displayMessage("{{ message }}", "{{ message.tags }}");
                     });
                 </script>
             {% endfor %}
         {% endif %}
 
-        <!-- Sliding Viewport -->
-        <div class="carousel-viewport">
-            <div class="carousel-track" id="main-track">
-                
-                <!-- SLIDE 1: Event Selection -->
-                <div class="carousel-slide">
-                    <div class="slide-content">
-                        <form id="form-step1" onsubmit="return false;">
-                            {% csrf_token %}
-                            
-                            <div class="form-group">
-                                <label class="input-label" for="event_id">Select Event</label>
-                                <div class="select-wrapper">
-                                    <select id="event_id" name="event_id" class="form-input" required>
-                                        <option value="">Choose active event...</option>
-                                        {% for event in events %}
-                                            <option value="{{ event.id }}">{{ event.name }} ({{ event.date }})</option>
-                                        {% endfor %}
-                                    </select>
-                                    <svg class="select-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                </div>
-                            </div>
+        <!-- Login Form -->
+        <form method="POST" id="login-form">
+            {% csrf_token %}
 
-                            <div class="form-group">
-                                <label class="input-label" for="event_password">Event Password</label>
-                                <input type="password" id="event_password" class="form-input" placeholder="Enter access code" required>
-                            </div>
-
-                            <button type="button" class="btn btn-primary" id="btn-verify" onclick="verifyEventPassword()">
-                                <span>Continue</span>
-                                <svg class="btn-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                                </svg>
-                            </button>
-                        </form>
-                        
-                        <div class="slide-footer">
-                            <a href="{% url 'login_choice' %}" class="link-back">Back to Login Choice</a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SLIDE 2: Details & Round -->
-                <div class="carousel-slide">
-                    <div class="slide-content">
-                        <form id="form-step2" method="POST" action="{% url 'select_round' 0 %}">
-                            {% csrf_token %}
-                            <input type="hidden" id="selected_event_id" name="event_id">
-
-                            <div class="form-group">
-                                <label class="input-label" for="candidate_name">Candidate / Team Name</label>
-                                <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="e.g. John Doe" required>
-                            </div>
-
-                            <div class="grid-row">
-                                <div class="form-group half">
-                                    <label class="input-label" for="round_number">Round</label>
-                                    <div class="select-wrapper">
-                                        <select id="round_number" name="round_number" class="form-input" required>
-                                            <option value="">Select...</option>
-                                        </select>
-                                        <svg class="select-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-group half">
-                                    <label class="input-label" for="round_password">Round Passcode</label>
-                                    <input type="password" id="round_password" name="round_password" class="form-input" placeholder="****" required>
-                                </div>
-                            </div>
-
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-secondary" onclick="moveSlide(0)">
-                                    Back
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    Start Test
-                                </button>
-                            </div>
-                        </form>
-
-                        <div class="slide-footer">
-                            <a href="{% url 'login_choice' %}" class="link-back">Cancel</a>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- Candidate Name Input -->
+            <div class="form-group">
+                <label class="input-label" for="candidate_name">Name</label>
+                <input 
+                    type="text" 
+                    id="candidate_name" 
+                    name="candidate_name" 
+                    class="form-input" 
+                    placeholder="Enter your name" 
+                    required
+                    autofocus
+                >
             </div>
+
+            <!-- Access Code Input -->
+            <div class="form-group">
+                <label class="input-label" for="access_code">Access Code</label>
+                <input 
+                    type="password" 
+                    id="access_code" 
+                    name="access_code" 
+                    class="form-input" 
+                    placeholder="Enter access code" 
+                    required
+                >
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn-submit">Join Quiz</button>
+        </form>
+
+        <!-- Back Link -->
+        <div class="form-footer">
+            <a href="{% url 'login_choice' %}" class="link-back">Back to Login</a>
         </div>
     </div>
 </div>
 
 <style>
-    /* --- VARIABLES --- */
     :root {
-        --c-primary: #2563EB;       /* Enterprise Blue */
-        --c-primary-dark: #1D4ED8;
-        --c-bg: #F3F4F6;
-        --c-surface: #FFFFFF;
-        --c-text: #1F2937;
-        --c-text-muted: #6B7280;
-        --c-border: #E5E7EB;
-        --c-error: #EF4444;
-        --c-error-bg: #FEF2F2;
-        --c-ring: rgba(37, 99, 235, 0.2);
-        
-        --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        --radius: 12px;
-        --ease-spring: cubic-bezier(0.25, 1, 0.5, 1); /* Soft spring-like ease */
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --text: #1f2937;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --bg: #f9fafb;
+        --error: #dc2626;
+        --error-bg: #fee2e2;
+        --success: #10b981;
+        --success-bg: #ecfdf5;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     body {
         font-family: 'Inter', sans-serif;
-        background-color: var(--c-bg);
-        color: var(--c-text);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: var(--text);
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    /* --- LAYOUT --- */
-    .enterprise-container {
+    .quiz-login-container {
         width: 100%;
-        padding: 24px;
+        padding: 20px;
         display: flex;
         justify-content: center;
+        align-items: center;
     }
 
     .login-card {
-        background: var(--c-surface);
+        background: white;
         width: 100%;
-        max-width: 500px;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow-lg);
+        max-width: 450px;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         padding: 40px;
-        border: 1px solid white;
         position: relative;
-        overflow: hidden;
     }
 
-    /* --- HEADER --- */
+    /* Header */
     .card-header {
         text-align: center;
         margin-bottom: 32px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid var(--bg);
     }
 
-    .brand-pill {
-        display: inline-block;
-        font-size: 0.75rem;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-        color: var(--c-primary);
-        background: #EFF6FF;
-        padding: 4px 12px;
-        border-radius: 99px;
-        margin-bottom: 12px;
+    .header-icon {
+        width: 48px;
+        height: 48px;
+        color: var(--primary);
+        margin: 0 auto 12px;
+        display: block;
     }
 
-    .card-title {
-        font-size: 1.5rem;
+    .header-title {
+        font-size: 1.75rem;
         font-weight: 700;
-        margin-bottom: 4px;
-        letter-spacing: -0.025em;
+        margin-bottom: 6px;
+        color: var(--text);
     }
 
-    .card-subtitle {
-        color: var(--c-text-muted);
-        font-size: 0.875rem;
+    .header-subtitle {
+        font-size: 0.9rem;
+        color: var(--text-muted);
     }
 
-    /* --- STEPPER --- */
-    .stepper-wrapper {
+    /* Alert Messages */
+    #alert-container {
+        margin-bottom: 20px;
+    }
+
+    .alert-message {
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 0.9rem;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-bottom: 32px;
-        position: relative;
-        padding: 0 40px;
+        gap: 10px;
+        animation: slideDown 0.3s ease;
     }
 
-    .step-line {
-        flex: 1;
-        height: 2px;
-        background: var(--c-border);
-        margin: 0 16px;
-        position: relative;
-        top: -10px;
-        z-index: 0;
+    .alert-error {
+        background: var(--error-bg);
+        border: 1px solid #fca5a5;
+        color: #7f1d1d;
     }
 
-    .step-line-fill {
-        height: 100%;
-        width: 0%;
-        background: var(--c-primary);
-        transition: width 0.5s var(--ease-spring);
+    .alert-success {
+        background: var(--success-bg);
+        border: 1px solid #6ee7b7;
+        color: #065f46;
     }
 
-    .step-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        z-index: 2;
-        position: relative;
-    }
-
-    .step-circle {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--c-surface);
-        border: 2px solid var(--c-border);
-        color: var(--c-text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 0.875rem;
-        transition: all 0.4s var(--ease-spring);
-    }
-
-    .step-label {
-        font-size: 0.75rem;
-        font-weight: 500;
-        color: var(--c-text-muted);
-        transition: color 0.4s;
-    }
-
-    /* Active State for Stepper */
-    .step-item.active .step-circle {
-        border-color: var(--c-primary);
-        background: var(--c-primary);
-        color: white;
-        transform: scale(1.1);
-        box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
-    }
-
-    .step-item.active .step-label {
-        color: var(--c-primary);
-    }
-
-    /* --- SLIDER MECHANISM --- */
-    .carousel-viewport {
-        overflow: hidden;
-        width: 100%;
-        position: relative;
-    }
-
-    .carousel-track {
-        display: flex;
-        width: 200%; /* 2 slides */
-        transition: transform 0.6s var(--ease-spring);
-        will-change: transform;
-    }
-
-    .carousel-slide {
-        width: 50%;
+    .alert-icon {
+        width: 18px;
+        height: 18px;
         flex-shrink: 0;
-        padding: 4px; /* Space for focus rings */
     }
 
-    .slide-content {
-        padding: 0 4px; /* Inner spacing */
+    /* Form */
+    .form-group {
+        margin-bottom: 20px;
     }
 
-    /* --- FORMS --- */
-    .form-group { margin-bottom: 20px; }
-    
-    .grid-row { display: flex; gap: 16px; }
-    .grid-row .half { flex: 1; }
+    .form-group:last-of-type {
+        margin-bottom: 28px;
+    }
 
     .input-label {
         display: block;
-        font-size: 0.875rem;
-        font-weight: 500;
-        margin-bottom: 6px;
-        color: var(--c-text);
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
     }
 
     .form-input {
         width: 100%;
         height: 48px;
-        padding: 0 16px;
-        border: 1px solid var(--c-border);
+        padding: 0 14px;
+        border: 1.5px solid var(--border);
         border-radius: 8px;
         font-size: 0.95rem;
         font-family: inherit;
-        background: var(--c-surface);
+        background: white;
         transition: all 0.2s;
-        color: var(--c-text);
+        color: var(--text);
+    }
+
+    .form-input::placeholder {
+        color: var(--text-muted);
     }
 
     .form-input:focus {
         outline: none;
-        border-color: var(--c-primary);
-        box-shadow: 0 0 0 3px var(--c-ring);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
 
-    .select-wrapper { position: relative; }
-    
-    select.form-input {
-        appearance: none;
-        padding-right: 40px;
-        cursor: pointer;
+    .form-input:disabled {
+        background: var(--bg);
+        opacity: 0.65;
     }
 
-    .select-icon {
-        position: absolute;
-        right: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 16px;
-        height: 16px;
-        color: var(--c-text-muted);
-        pointer-events: none;
-    }
-
-    /* --- BUTTONS --- */
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+    /* Submit Button */
+    .btn-submit {
+        width: 100%;
         height: 48px;
-        padding: 0 24px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        border: none;
         border-radius: 8px;
-        font-weight: 500;
         font-size: 0.95rem;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        border: none;
-        width: 100%;
-        gap: 8px;
+        box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
     }
 
-    .btn-primary {
-        background: var(--c-primary);
-        color: white;
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px -1px rgba(99, 102, 241, 0.3);
     }
 
-    .btn-primary:hover {
-        background: var(--c-primary-dark);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    .btn-submit:active {
+        transform: translateY(0);
     }
 
-    .btn-primary:disabled {
-        opacity: 0.7;
+    .btn-submit:disabled {
+        opacity: 0.65;
         cursor: not-allowed;
         transform: none;
     }
 
-    .btn-secondary {
-        background: transparent;
-        border: 1px solid var(--c-border);
-        color: var(--c-text);
-    }
-
-    .btn-secondary:hover {
-        background: #F9FAFB;
-        border-color: #D1D5DB;
-    }
-
-    .btn-group {
-        display: grid;
-        grid-template-columns: 1fr 2fr;
-        gap: 12px;
-        margin-top: 24px;
-    }
-
-    .btn-icon { width: 18px; height: 18px; }
-
-    /* --- LINKS --- */
-    .slide-footer {
-        margin-top: 24px;
+    /* Footer */
+    .form-footer {
         text-align: center;
+        margin-top: 20px;
     }
 
     .link-back {
-        color: var(--c-text-muted);
+        color: var(--text-muted);
         text-decoration: none;
-        font-size: 0.875rem;
+        font-size: 0.9rem;
         transition: color 0.2s;
     }
 
-    .link-back:hover { color: var(--c-primary); }
-
-    /* --- ALERTS --- */
-    .alert-container { margin-bottom: 20px; }
-
-    .alert {
-        padding: 12px 16px;
-        background: var(--c-error-bg);
-        border: 1px solid #FECACA;
-        color: #991B1B;
-        border-radius: 8px;
-        font-size: 0.875rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+    .link-back:hover {
+        color: var(--primary);
     }
 
-    .alert-success {
-        background: #ECFDF5;
-        border-color: #6EE7B7;
-        color: #065F46;
-        animation: slideDown 0.3s ease;
-    }
-
-    .alert-icon { width: 18px; height: 18px; flex-shrink: 0; }
-
-    /* --- ANIMATIONS --- */
+    /* Animations */
     @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    @keyframes shake {
-        10%, 90% { transform: translate3d(-1px, 0, 0); }
-        20%, 80% { transform: translate3d(2px, 0, 0); }
-        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-        40%, 60% { transform: translate3d(4px, 0, 0); }
-    }
-
-    /* --- MOBILE --- */
+    /* Mobile */
     @media (max-width: 480px) {
-        .login-card { padding: 24px; background: transparent; box-shadow: none; border: none; }
-        .stepper-wrapper { padding: 0; }
-        .grid-row { flex-direction: column; gap: 20px; }
-        .enterprise-container { padding: 0; align-items: flex-start; }
+        .login-card {
+            padding: 28px 20px;
+            margin: 0 16px;
+        }
+
+        .header-title {
+            font-size: 1.5rem;
+        }
+
+        .form-input {
+            font-size: 16px; /* Prevents zoom on mobile */
+        }
     }
 </style>
 
 <script>
-    let selectedEventId = null;
-    let selectedEventRounds = [];
-
-    // --- Navigation & Animation Logic ---
-    function moveSlide(stepIndex) {
-        const track = document.getElementById('main-track');
-        const indicator1 = document.getElementById('indicator-1');
-        const indicator2 = document.getElementById('indicator-2');
-        const progressLine = document.getElementById('progress-line');
-
-        if (stepIndex === 1) {
-            // Move to Step 2
-            track.style.transform = 'translateX(-50%)';
-            indicator1.classList.remove('active');
-            indicator2.classList.add('active');
-            progressLine.style.width = '100%';
-            
-            // Clear errors
-            document.getElementById('alert-container').innerHTML = '';
-        } else {
-            // Back to Step 1
-            track.style.transform = 'translateX(0%)';
-            indicator2.classList.remove('active');
-            indicator1.classList.add('active');
-            progressLine.style.width = '0%';
-        }
-    }
-
-    function verifyEventPassword() {
-        const eventId = document.getElementById('event_id').value;
-        const eventPassword = document.getElementById('event_password').value;
-        const btn = document.getElementById('btn-verify');
-        const originalText = btn.innerHTML;
-
-        if (!eventId) {
-            showError('Please select an event.');
-            return;
-        }
-        if (!eventPassword) {
-            showError('Please enter the event password.');
-            return;
-        }
-
-        // Loading State
-        btn.disabled = true;
-        btn.innerHTML = '<span style="opacity:0.8">Verifying...</span>';
-
-        fetch(`/api/verify-event-password/${eventId}/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            },
-            body: JSON.stringify({ password: eventPassword })
-        })
-        .then(response => response.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-
-            if (data.correct) {
-                selectedEventId = eventId;
-                loadRounds(eventId);
-                moveSlide(1); // Trigger Animation
-                
-                // Update form action
-                document.getElementById('selected_event_id').value = selectedEventId;
-                document.getElementById('form-step2').action = `/login/candidate/select-round/${selectedEventId}/`;
-            } else {
-                showError('Incorrect event password.');
-            }
-        })
-        .catch(error => {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            showError('Network error. Please try again.');
-            console.error('Error:', error);
-        });
-    }
-
-    function loadRounds(eventId) {
-        fetch(`/api/get-rounds/${eventId}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const roundSelect = document.getElementById('round_number');
-                roundSelect.innerHTML = '<option value="">Select...</option>';
-                data.rounds.forEach(round => {
-                    const option = document.createElement('option');
-                    option.value = round;
-                    option.textContent = `Round ${round}`;
-                    roundSelect.appendChild(option);
-                });
-            }
-        })
-        .catch(error => console.error('Error loading rounds:', error));
-    }
-
-    function showError(message, type = 'error') {
+    function displayMessage(message, type = 'error') {
         const container = document.getElementById('alert-container');
         const isError = type !== 'success';
+        const bgClass = isError ? 'alert-error' : 'alert-success';
         
-        container.innerHTML = `
-            <div class="alert ${isError ? '' : 'alert-success'}">
+        const alertHTML = `
+            <div class="alert-message ${bgClass}">
                 <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                         d="${isError 
@@ -598,18 +314,31 @@
                 <span>${message}</span>
             </div>
         `;
+        
+        container.innerHTML = alertHTML;
     }
 
-    // Step 2 Validation
-    document.getElementById('form-step2').addEventListener('submit', function(e) {
-        const name = document.getElementById('candidate_name').value;
-        const round = document.getElementById('round_number').value;
-        const pass = document.getElementById('round_password').value;
-
-        if (!name.trim() || !round || !pass) {
-            e.preventDefault();
-            showError('All fields are required.');
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const candidateName = document.getElementById('candidate_name').value.trim();
+        const accessCode = document.getElementById('access_code').value.trim();
+        const btn = document.querySelector('.btn-submit');
+        
+        if (!candidateName) {
+            displayMessage('Please enter your name.', 'error');
+            return;
         }
+        
+        if (!accessCode) {
+            displayMessage('Please enter the access code.', 'error');
+            return;
+        }
+        
+        // Submit the form
+        btn.disabled = true;
+        btn.innerHTML = 'Joining...';
+        this.submit();
     });
 </script>
 {% endblock %}

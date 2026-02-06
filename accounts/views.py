@@ -6,12 +6,21 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from .models import Event, Round, Question, QuestionOption, CandidateEntry
 from .email_service import send_quiz_completion_email, send_quiz_results_email, send_email_with_brevo
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.utils import timezone
 import json
 import logging
 import traceback
+import random
+import string
 
 logger = logging.getLogger(__name__)
+
+
+def generate_access_code(length=6):
+    """Generate a random alphanumeric access code"""
+    characters = string.ascii_uppercase + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
 
 
 # Home page - redirect to login choice
@@ -26,82 +35,97 @@ def login_choice(request):
     return render(request, 'login_choice.html')
 
 
-# Candidate login - Step 1: Event selection and event password
+# Candidate login - Simple: Ask for name and access code
 def candidate_login(request):
-    """Handle candidate login - Step 1: Select event and enter event password"""
+    """Handle candidate login - Ask for candidate name and round access code"""
     if request.method == 'POST':
-        event_id = request.POST.get('event_id')
-        event_password = request.POST.get('event_password')
+        candidate_name = request.POST.get('candidate_name', '').strip()
+        access_code = request.POST.get('access_code', '').strip()
+        
+        # Validate inputs
+        if not candidate_name:
+            messages.error(request, 'Please enter your name or team name!')
+            return redirect('candidate_login')
+        
+        if not access_code:
+            messages.error(request, 'Please enter the access code!')
+            return redirect('candidate_login')
         
         try:
-            event = Event.objects.get(id=event_id)
+            # Find the round with this access code
+            round_obj = Round.objects.get(access_code=access_code)
             
-            # Verify event password
-            if event.event_access_password == event_password:
-                # Password correct, redirect to round selection
-                return redirect('select_round', event_id=event_id)
-            else:
-                messages.error(request, 'Incorrect event password!')
-        except Event.DoesNotExist:
-            messages.error(request, 'Event not found!')
+            # Check if round has already started
+            if round_obj.is_started:
+                messages.error(request, 'This round has already started! No new candidates can join.')
+                return redirect('candidate_login')
+            
+            event = round_obj.event
+            
+            # Create candidate entry with is_waiting=True
+            candidate_entry = CandidateEntry.objects.create(
+                event=event,
+                round=round_obj,
+                candidate_name=candidate_name,
+                is_waiting=True
+            )
+            
+            # Store in session
+            request.session['candidate_entry_id'] = candidate_entry.id
+            request.session['candidate_name'] = candidate_entry.candidate_name
+            
+            # Redirect to waiting page
+            return redirect('waiting_for_round', event_id=event.id, round_number=round_obj.round_number)
+        except Round.DoesNotExist:
+            messages.error(request, 'Invalid access code! Please check and try again.')
+            return redirect('candidate_login')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            return redirect('candidate_login')
     
-    events = Event.objects.all()
-    context = {
-        'events': events
-    }
-    return render(request, 'candidate_login.html', context)
+    return render(request, 'candidate_login.html')
 
 
 # Candidate login - Step 2: Round selection and password verification
 def select_round(request, event_id):
-    """Handle round selection and password verification - Step 2"""
+    """Handle round selection - Step 2"""
     try:
         event = Event.objects.get(id=event_id)
         
         if request.method == 'POST':
             candidate_name = request.POST.get('candidate_name')
-            round_number = request.POST.get('round_number')
-            round_password = request.POST.get('round_password')
+            access_code = request.POST.get('access_code')
             
             # Validate candidate name
             if not candidate_name or candidate_name.strip() == '':
                 messages.error(request, 'Please enter your name or team name!')
                 return redirect('candidate_login')
             
-            # Validate round number is provided
-            if not round_number:
-                messages.error(request, 'Please select a round!')
+            # Validate access code is provided
+            if not access_code:
+                messages.error(request, 'Please enter the access code!')
                 return redirect('candidate_login')
             
             try:
-                round_number = int(round_number)
-                # Create or get the Round object
-                round_obj, created = Round.objects.get_or_create(
-                    event=event,
-                    round_number=round_number,
-                    defaults={'duration_minutes': 60}
+                # Find the round with this access code
+                round_obj = Round.objects.get(access_code=access_code)
+                
+                # Create candidate entry and store in session
+                candidate_entry = CandidateEntry.objects.create(
+                    event=round_obj.event,
+                    round=round_obj,
+                    candidate_name=candidate_name.strip(),
+                    is_waiting=True
                 )
                 
-                # Verify round password
-                if round_obj.access_password == round_password:
-                    # Password correct, create candidate entry and store in session
-                    candidate_entry = CandidateEntry.objects.create(
-                        event=event,
-                        round=round_obj,
-                        candidate_name=candidate_name.strip()
-                    )
-                    
-                    # Store candidate entry ID in session
-                    request.session['candidate_entry_id'] = candidate_entry.id
-                    request.session['candidate_name'] = candidate_entry.candidate_name
-                    
-                    # Redirect to quiz test
-                    return redirect('quiz_test', event_id=event_id, round_number=round_number)
-                else:
-                    messages.error(request, 'Incorrect round password!')
-                    return redirect('candidate_login')
-            except ValueError:
-                messages.error(request, 'Invalid round number!')
+                # Store candidate entry ID in session
+                request.session['candidate_entry_id'] = candidate_entry.id
+                request.session['candidate_name'] = candidate_entry.candidate_name
+                
+                # Redirect to waiting page
+                return redirect('waiting_for_round', event_id=round_obj.event.id, round_number=round_obj.round_number)
+            except Round.DoesNotExist:
+                messages.error(request, 'Invalid access code!')
                 return redirect('candidate_login')
         
         # GET request - redirect to candidate login
@@ -111,26 +135,37 @@ def select_round(request, event_id):
         return redirect('candidate_login')
 
 
-# Candidate login - Step 3: Round password verification
+# Candidate login - Step 3: Access code verification
 def verify_round_login(request, event_id, round_number):
-    """Handle round password verification - Step 3: Verify round password"""
+    """Handle access code verification - Step 3: Verify access code"""
     if request.method == 'POST':
-        round_password = request.POST.get('round_password')
+        candidate_name = request.POST.get('candidate_name')
+        access_code = request.POST.get('access_code')
         
         try:
             event = Event.objects.get(id=event_id)
-            round_obj, created = Round.objects.get_or_create(
-                event=event,
-                round_number=round_number,
-                defaults={'duration_minutes': 60}
-            )
+            round_obj = Round.objects.get(event=event, round_number=round_number)
             
-            # Verify round password
-            if round_obj.access_password == round_password:
-                # Password correct, redirect to quiz test
-                return redirect('quiz_test', event_id=event_id, round_number=round_number)
+            # Verify access code
+            if round_obj.access_code and round_obj.access_code == access_code:
+                # Code correct, create candidate entry
+                candidate_entry = CandidateEntry.objects.create(
+                    event=event,
+                    round=round_obj,
+                    candidate_name=candidate_name.strip(),
+                    is_waiting=True
+                )
+                
+                # Store in session
+                request.session['candidate_entry_id'] = candidate_entry.id
+                request.session['candidate_name'] = candidate_entry.candidate_name
+                
+                # Redirect to waiting page
+                return redirect('waiting_for_round', event_id=event_id, round_number=round_number)
             else:
-                messages.error(request, 'Incorrect round password!')
+                messages.error(request, 'Incorrect access code!')
+        except Round.DoesNotExist:
+            messages.error(request, 'Round not found!')
         except Event.DoesNotExist:
             messages.error(request, 'Event not found!')
         except Exception as e:
@@ -146,6 +181,29 @@ def verify_round_login(request, event_id, round_number):
         return render(request, 'enter_round_password.html', context)
     except Event.DoesNotExist:
         messages.error(request, 'Event not found!')
+        return redirect('candidate_login')
+
+
+# Waiting for round to start
+def waiting_for_round(request, event_id, round_number):
+    """Display waiting page while admin starts the round"""
+    try:
+        event = Event.objects.get(id=event_id)
+        round_obj = Round.objects.get(event=event, round_number=round_number)
+        
+        # Get candidate name and entry id from session
+        candidate_name = request.session.get('candidate_name', 'Anonymous')
+        candidate_entry_id = request.session.get('candidate_entry_id', None)
+        
+        context = {
+            'event': event,
+            'round': round_obj,
+            'candidate_name': candidate_name,
+            'candidate_entry_id': candidate_entry_id
+        }
+        return render(request, 'waiting_for_round.html', context)
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
         return redirect('candidate_login')
 
 
@@ -185,15 +243,13 @@ def add_event(request):
         event_name = request.POST.get('event_name')
         event_date = request.POST.get('event_date')
         number_of_rounds = request.POST.get('number_of_rounds')
-        event_password = request.POST.get('event_access_password')
         
         try:
             # Create the event
             event = Event.objects.create(
                 name=event_name,
                 date=event_date,
-                number_of_rounds=int(number_of_rounds),
-                event_access_password=event_password
+                number_of_rounds=int(number_of_rounds)
             )
             
             messages.success(request, f'Event "{event_name}" created successfully!')
@@ -234,16 +290,17 @@ def round_details(request, event_id, round_number):
             defaults={'duration_minutes': 60}
         )
         
+        # Auto-generate access code if it doesn't exist
+        if not round_obj.access_code:
+            round_obj.access_code = generate_access_code()
+            round_obj.save()
+        
         # Handle POST request for updating round settings
         if request.method == 'POST':
             duration = request.POST.get('duration_minutes')
-            password = request.POST.get('access_password')
-            owner_email = request.POST.get('owner_email')
             
-            if duration and password:
+            if duration:
                 round_obj.duration_minutes = int(duration)
-                round_obj.access_password = password
-                round_obj.owner_email = owner_email if owner_email else None
                 round_obj.save()
                 messages.success(request, 'Round settings updated successfully!')
                 return redirect('round_details', event_id=event_id, round_number=round_number)
@@ -306,24 +363,13 @@ def admin_logout(request):
 # API: Verify event password
 @csrf_exempt
 def verify_event_password(request, event_id):
-    """API endpoint to verify event password"""
+    """API endpoint - No longer used, events don't have passwords"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        data = json.loads(request.body)
-        password = data.get('password')
-        
-        event = Event.objects.get(id=event_id)
-        
-        if event.event_access_password == password:
-            return JsonResponse({'correct': True, 'success': True})
-        else:
-            return JsonResponse({'correct': False, 'success': True})
-    except Event.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+        # Events no longer have passwords, return success
+        return JsonResponse({'correct': True, 'success': True})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
@@ -346,50 +392,71 @@ def get_rounds(request, event_id):
         }, status=404)
 
 
-# API: Verify round password
+# API: Verify round access code
 @csrf_exempt
 def verify_round_password(request, event_id, round_number):
-    """API endpoint to verify round password"""
+    """API endpoint to verify round access code"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
         data = json.loads(request.body)
-        password = data.get('password')
+        access_code = data.get('access_code')
         
         event = Event.objects.get(id=event_id)
-        # Create Round if it doesn't exist
-        round_obj, created = Round.objects.get_or_create(
-            event=event,
-            round_number=round_number,
-            defaults={'duration_minutes': 60}
-        )
+        # Get the Round
+        round_obj = Round.objects.get(event=event, round_number=round_number)
         
-        if round_obj.access_password == password:
+        if round_obj.access_code and round_obj.access_code == access_code:
             return JsonResponse({'correct': True, 'success': True})
         else:
             return JsonResponse({'correct': False, 'success': True})
     except Event.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 # Quiz Test Page
 def quiz_test(request, event_id, round_number):
-    """Display quiz test page for candidate"""
+    """Display quiz test page for candidate - Only allow access once"""
     try:
+        # Get candidate name and entry id from session
+        candidate_name = request.session.get('candidate_name', None)
+        candidate_entry_id = request.session.get('candidate_entry_id', None)
+        
+        # Check if candidate has valid session
+        if not candidate_name or not candidate_entry_id:
+            messages.error(request, 'Invalid session. Please login again.')
+            return redirect('candidate_login')
+        
+        # Check if candidate has already accessed the quiz page (prevent refresh)
+        quiz_session_key = f'quiz_accessed_{event_id}_{round_number}_{candidate_entry_id}'
+        if request.session.get(quiz_session_key):
+            # They've already accessed the quiz page - this is a refresh attempt
+            messages.error(request, 'You cannot re-enter the quiz. Your attempt has been recorded.')
+            return redirect('waiting_for_round', event_id=event_id, round_number=round_number)
+        
+        # Mark that this student has accessed the quiz page
+        request.session[quiz_session_key] = True
+        request.session.modified = True
+        
         event = Event.objects.get(id=event_id)
         round_obj = Round.objects.get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
         
-        # Get candidate name from session
-        candidate_name = request.session.get('candidate_name', 'Anonymous')
-        candidate_entry_id = request.session.get('candidate_entry_id', None)
+        # Mark candidate as no longer waiting (they've started the quiz)
+        if candidate_entry_id:
+            try:
+                candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+                candidate_entry.is_waiting = False
+                candidate_entry.save()
+            except CandidateEntry.DoesNotExist:
+                pass
         
         context = {
             'event': event,
@@ -455,28 +522,24 @@ def submit_quiz(request):
         total_questions = questions.count()
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
 
-        logger.info(f"Quiz submission completed - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
-
-        # Send results to Telegram
+        # Mark candidate as submitted with score and time
         try:
-            from accounts.utils.telegram import send_telegram_message
-
-            message = (
-                f"Quiz Results:\n"
-                f"Candidate: {candidate_name}\n"
-                f"Event: {event.name}\n"
-                f"Round: {round_number}\n"
-                f"Score: {score}/{total_questions} ({percentage:.2f}%)\n"
-                f"Time Taken: {time_taken_seconds} seconds"
+            from .models import CandidateEntry
+            candidate_entries = CandidateEntry.objects.filter(
+                round=round_obj,
+                candidate_name=candidate_name
             )
+            for entry in candidate_entries:
+                entry.is_submitted = True
+                entry.score = score
+                entry.total_questions = total_questions
+                entry.time_taken_seconds = time_taken_seconds
+                entry.save()
+            logger.info(f"Marked candidate {candidate_name} as submitted - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
+        except Exception as e:
+            logger.warning(f"Could not mark candidate as submitted: {str(e)}")
 
-            telegram_response = send_telegram_message(message)
-            if "error" in telegram_response:
-                logger.error(f"Failed to send Telegram message: {telegram_response['error']}")
-            else:
-                logger.info("Telegram message sent successfully")
-        except Exception as telegram_error:
-            logger.error(f"Error while sending Telegram message: {str(telegram_error)}")
+        logger.info(f"Quiz submission completed - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
 
         logger.info(f"✓ Quiz submission completed successfully")
         return JsonResponse({
@@ -500,3 +563,172 @@ def submit_quiz(request):
         logger.error(f"Unexpected error in submit_quiz: {str(e)}")
         logger.error(traceback.format_exc())
         return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
+
+
+@csrf_exempt
+def check_round_started(request, event_id, round_number):
+    """API endpoint to check if admin has started the round"""
+    try:
+        # Always get fresh data from database
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        is_started = round_obj.is_started
+        logger.info(f"check_round_started - Event: {event_id}, Round: {round_number}, is_started: {is_started}")
+        return JsonResponse({
+            'started': is_started
+        })
+    except Round.DoesNotExist:
+        logger.warning(f"Round not found - Event: {event_id}, Round: {round_number}")
+        return JsonResponse({
+            'started': False,
+            'error': 'Round not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"check_round_started error: {str(e)}")
+        return JsonResponse({
+            'started': False,
+            'error': str(e)
+        }, status=500)
+
+
+@csrf_exempt
+def update_candidate_active(request, candidate_entry_id):
+    """API endpoint to update candidate's last_active timestamp"""
+    try:
+        candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+        candidate_entry.last_active = timezone.now()
+        candidate_entry.save()
+        return JsonResponse({'success': True})
+    except CandidateEntry.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+def start_round(request, event_id, round_number):
+    """Render the Start Round page with round details and candidates."""
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        
+        # Handle POST request to start the round
+        if request.method == 'POST':
+            # Only generate access code if not already started (first time only)
+            if not round_obj.is_started:
+                round_obj.access_code = generate_access_code()
+            round_obj.is_started = True
+            round_obj.save()
+            logger.info(f"Round {round_number} started - is_started set to: {round_obj.is_started}")
+            # Refresh from database to ensure we have the latest state
+            round_obj.refresh_from_db()
+            logger.info(f"After refresh - is_started: {round_obj.is_started}")
+            messages.success(request, f'Round started! Access code: {round_obj.access_code}. No new candidates can join now.')
+        else:
+            # On GET request, ensure access code exists (for initial access)
+            if not round_obj.access_code:
+                round_obj.access_code = generate_access_code()
+                round_obj.save()
+        
+        # Show all candidates who have entered this round
+        all_candidates = CandidateEntry.objects.filter(round=round_obj).order_by('-is_submitted', 'entry_time')
+        
+        # Create a list with candidate info including status
+        current_time = timezone.now()
+        threshold_90s = current_time - timedelta(seconds=90)
+        threshold_30s = current_time - timedelta(seconds=30)
+        
+        candidates_data = []
+        
+        if round_obj.is_started:
+            # After round starts: show ONLY candidates actively giving test or submitted
+            # 1. Candidates currently taking test (is_waiting=False, is_submitted=False, active in last 90 seconds)
+            actively_testing = all_candidates.filter(
+                is_waiting=False,
+                is_submitted=False,
+                last_active__gte=threshold_90s
+            )
+            
+            # 2. Candidates who submitted (is_submitted=True)
+            submitted = all_candidates.filter(is_submitted=True)
+            
+            # Combine the two groups
+            display_candidates = list(submitted) + list(actively_testing)
+            
+            for candidate in display_candidates:
+                if candidate.is_submitted:
+                    status = "Submitted"
+                elif not candidate.is_waiting and candidate.last_active >= threshold_90s:
+                    status = "Giving Test"
+                else:
+                    status = "Left"
+                
+                # Format time taken
+                time_display = ""
+                if candidate.time_taken_seconds:
+                    mins = candidate.time_taken_seconds // 60
+                    secs = candidate.time_taken_seconds % 60
+                    time_display = f"{mins}m {secs}s"
+                
+                candidates_data.append({
+                    'id': candidate.id,
+                    'name': candidate.candidate_name,
+                    'is_submitted': candidate.is_submitted,
+                    'is_waiting': candidate.is_waiting,
+                    'entry_time': candidate.entry_time,
+                    'last_active': candidate.last_active,
+                    'status': status,
+                    'score': candidate.score if candidate.score else 0,
+                    'total_questions': candidate.total_questions if candidate.total_questions else 0,
+                    'time_taken': time_display
+                })
+            
+            display_label = "Candidates - All Status"
+        else:
+            # Before round starts: show only actively waiting candidates (active in last 30 seconds)
+            display_candidates = all_candidates.filter(
+                is_waiting=True,
+                last_active__gte=threshold_30s
+            )
+            
+            for candidate in display_candidates:
+                candidates_data.append({
+                    'id': candidate.id,
+                    'name': candidate.candidate_name,
+                    'is_submitted': candidate.is_submitted,
+                    'is_waiting': candidate.is_waiting,
+                    'entry_time': candidate.entry_time,
+                    'last_active': candidate.last_active,
+                    'status': "Waiting"
+                })
+            
+            display_label = "Candidates Joined"
+        
+        context = {
+            'round': round_obj,
+            'candidates_data': candidates_data,
+            'candidates': display_candidates,
+            'display_label': display_label,
+            'submitted_count': all_candidates.filter(is_submitted=True).count(),
+            'total_count': all_candidates.count(),
+            'event': round_obj.event,
+        }
+        return render(request, 'start_round.html', context)
+    except Round.DoesNotExist:
+        messages.error(request, 'Round not found!')
+        return redirect('admin_panel')
+
+
+def end_round(request, event_id, round_number):
+    """End the round and redirect back to round details"""
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        
+        if request.method == 'POST':
+            round_obj.is_started = False
+            round_obj.save()
+            messages.success(request, 'Round has been ended successfully!')
+            return redirect('round_details', event_id=event_id, round_number=round_number)
+        else:
+            # Redirect to start_round if not POST
+            return redirect('start_round', event_id=event_id, round_number=round_number)
+    except Round.DoesNotExist:
+        messages.error(request, 'Round not found!')
+        return redirect('admin_panel')
