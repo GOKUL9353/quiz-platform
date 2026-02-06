@@ -3,21 +3,18 @@
 {% block title %}Join Quiz - Quiz Platform{% endblock %}
 
 {% block content %}
-<!-- Google Fonts: Inter (Professional Sans-Serif) -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <div class="quiz-login-container">
     <div class="login-card">
-        <!-- Card Header with Gradient -->
         <div class="card-header">
             <svg class="header-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4m-4-6l2.293-2.293a1 1 0 111.414 1.414L12 7m0 0l-2.707-2.707a1 1 0 00-1.414 1.414L12 7" />
             </svg>
             <h1 class="header-title">Join Quiz</h1>
-            <p class="header-subtitle">Enter your details and access code</p>
+            <p class="header-subtitle">Secure access for registered candidates</p>
         </div>
 
-        <!-- Alert Messages -->
         <div id="alert-container"></div>
         {% if messages %}
             {% for message in messages %}
@@ -29,316 +26,199 @@
             {% endfor %}
         {% endif %}
 
-        <!-- Login Form -->
         <form method="POST" id="login-form">
             {% csrf_token %}
 
-            <!-- Candidate Name Input -->
             <div class="form-group">
-                <label class="input-label" for="candidate_name">Name</label>
-                <input 
-                    type="text" 
-                    id="candidate_name" 
-                    name="candidate_name" 
-                    class="form-input" 
-                    placeholder="Enter your name" 
-                    required
-                    autofocus
-                >
+                <label class="input-label" for="candidate_name">Full Name</label>
+                <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="John Doe" required autofocus>
             </div>
 
-            <!-- Access Code Input -->
             <div class="form-group">
                 <label class="input-label" for="access_code">Access Code</label>
-                <input 
-                    type="password" 
-                    id="access_code" 
-                    name="access_code" 
-                    class="form-input" 
-                    placeholder="Enter access code" 
-                    required
-                >
+                <input type="password" id="access_code" name="access_code" class="form-input" placeholder="••••••••" required>
             </div>
 
-            <!-- Submit Button -->
             <button type="submit" class="btn-submit">Join Quiz</button>
         </form>
 
-        <!-- Back Link -->
         <div class="form-footer">
-            <a href="{% url 'login_choice' %}" class="link-back">Back to Login</a>
+            <a href="{% url 'login_choice' %}" class="link-back">← Back to login selection</a>
         </div>
     </div>
 </div>
 
 <style>
-    :root {
-        --primary: #6366f1;
-        --primary-dark: #4f46e5;
-        --text: #1f2937;
-        --text-muted: #6b7280;
-        --border: #e5e7eb;
-        --bg: #f9fafb;
-        --error: #dc2626;
-        --error-bg: #fee2e2;
-        --success: #10b981;
-        --success-bg: #ecfdf5;
-    }
+:root {
+    --primary: #4f46e5;
+    --primary-soft: #eef2ff;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --border: #e5e7eb;
+    --surface: #ffffff;
+    --canvas: #f4f6fb;
+    --error: #b91c1c;
+    --success: #047857;
+}
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+* { box-sizing: border-box; }
 
-    body {
-        font-family: 'Inter', sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: var(--text);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+body {
+    font-family: 'Inter', sans-serif;
+    background:
+        radial-gradient(circle at top left, #eef2ff 0%, transparent 45%),
+        radial-gradient(circle at bottom right, #ede9fe 0%, transparent 40%),
+        var(--canvas);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+}
 
-    .quiz-login-container {
-        width: 100%;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
+.quiz-login-container {
+    width: 100%;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+}
 
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 36px;
+    box-shadow:
+        0 10px 25px rgba(17, 24, 39, 0.08),
+        0 4px 10px rgba(17, 24, 39, 0.04);
+}
+
+.card-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.header-icon {
+    width: 40px;
+    height: 40px;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.header-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.header-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.form-group {
+    margin-bottom: 18px;
+}
+
+.input-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.form-input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.btn-submit {
+    width: 100%;
+    height: 46px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s, transform 0.15s;
+}
+
+.btn-submit:hover {
+    background: #4338ca;
+    transform: translateY(-1px);
+}
+
+.form-footer {
+    margin-top: 22px;
+    text-align: center;
+}
+
+.link-back {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.link-back:hover {
+    color: var(--primary);
+}
+
+@media (max-width: 480px) {
     .login-card {
-        background: white;
-        width: 100%;
-        max-width: 450px;
-        border-radius: 12px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        padding: 40px;
-        position: relative;
+        padding: 28px 22px;
     }
-
-    /* Header */
-    .card-header {
-        text-align: center;
-        margin-bottom: 32px;
-        padding-bottom: 20px;
-        border-bottom: 2px solid var(--bg);
-    }
-
-    .header-icon {
-        width: 48px;
-        height: 48px;
-        color: var(--primary);
-        margin: 0 auto 12px;
-        display: block;
-    }
-
-    .header-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        margin-bottom: 6px;
-        color: var(--text);
-    }
-
-    .header-subtitle {
-        font-size: 0.9rem;
-        color: var(--text-muted);
-    }
-
-    /* Alert Messages */
-    #alert-container {
-        margin-bottom: 20px;
-    }
-
-    .alert-message {
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        animation: slideDown 0.3s ease;
-    }
-
-    .alert-error {
-        background: var(--error-bg);
-        border: 1px solid #fca5a5;
-        color: #7f1d1d;
-    }
-
-    .alert-success {
-        background: var(--success-bg);
-        border: 1px solid #6ee7b7;
-        color: #065f46;
-    }
-
-    .alert-icon {
-        width: 18px;
-        height: 18px;
-        flex-shrink: 0;
-    }
-
-    /* Form */
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-group:last-of-type {
-        margin-bottom: 28px;
-    }
-
-    .input-label {
-        display: block;
-        font-size: 0.9rem;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: var(--text);
-    }
-
-    .form-input {
-        width: 100%;
-        height: 48px;
-        padding: 0 14px;
-        border: 1.5px solid var(--border);
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-family: inherit;
-        background: white;
-        transition: all 0.2s;
-        color: var(--text);
-    }
-
-    .form-input::placeholder {
-        color: var(--text-muted);
-    }
-
-    .form-input:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
-
-    .form-input:disabled {
-        background: var(--bg);
-        opacity: 0.65;
-    }
-
-    /* Submit Button */
-    .btn-submit {
-        width: 100%;
-        height: 48px;
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
-    }
-
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 12px -1px rgba(99, 102, 241, 0.3);
-    }
-
-    .btn-submit:active {
-        transform: translateY(0);
-    }
-
-    .btn-submit:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-        transform: none;
-    }
-
-    /* Footer */
-    .form-footer {
-        text-align: center;
-        margin-top: 20px;
-    }
-
-    .link-back {
-        color: var(--text-muted);
-        text-decoration: none;
-        font-size: 0.9rem;
-        transition: color 0.2s;
-    }
-
-    .link-back:hover {
-        color: var(--primary);
-    }
-
-    /* Animations */
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    /* Mobile */
-    @media (max-width: 480px) {
-        .login-card {
-            padding: 28px 20px;
-            margin: 0 16px;
-        }
-
-        .header-title {
-            font-size: 1.5rem;
-        }
-
-        .form-input {
-            font-size: 16px; /* Prevents zoom on mobile */
-        }
-    }
+}
 </style>
 
 <script>
-    function displayMessage(message, type = 'error') {
-        const container = document.getElementById('alert-container');
-        const isError = type !== 'success';
-        const bgClass = isError ? 'alert-error' : 'alert-success';
-        
-        const alertHTML = `
-            <div class="alert-message ${bgClass}">
-                <svg class="alert-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                        d="${isError 
-                            ? 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' 
-                            : 'M5 13l4 4L19 7'}" />
-                </svg>
-                <span>${message}</span>
-            </div>
-        `;
-        
-        container.innerHTML = alertHTML;
+function displayMessage(message, type = 'error') {
+    const container = document.getElementById('alert-container');
+    const isError = type !== 'success';
+    const bgClass = isError ? 'alert-error' : 'alert-success';
+
+    const alertHTML = `
+        <div class="alert-message ${bgClass}">
+            <span>${message}</span>
+        </div>
+    `;
+    container.innerHTML = alertHTML;
+}
+
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const candidateName = document.getElementById('candidate_name').value.trim();
+    const accessCode = document.getElementById('access_code').value.trim();
+    const btn = document.querySelector('.btn-submit');
+
+    if (!candidateName) {
+        displayMessage('Please enter your name.', 'error');
+        return;
     }
 
-    document.getElementById('login-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const candidateName = document.getElementById('candidate_name').value.trim();
-        const accessCode = document.getElementById('access_code').value.trim();
-        const btn = document.querySelector('.btn-submit');
-        
-        if (!candidateName) {
-            displayMessage('Please enter your name.', 'error');
-            return;
-        }
-        
-        if (!accessCode) {
-            displayMessage('Please enter the access code.', 'error');
-            return;
-        }
-        
-        // Submit the form
-        btn.disabled = true;
-        btn.innerHTML = 'Joining...';
-        this.submit();
-    });
+    if (!accessCode) {
+        displayMessage('Please enter the access code.', 'error');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = 'Joining...';
+    this.submit();
+});
 </script>
 {% endblock %}

@@ -62,13 +62,27 @@ def candidate_login(request):
             
             event = round_obj.event
             
-            # Create candidate entry with is_waiting=True
-            candidate_entry = CandidateEntry.objects.create(
-                event=event,
+            # Check if candidate with this name + access code already exists for this round
+            existing_entry = CandidateEntry.objects.filter(
                 round=round_obj,
                 candidate_name=candidate_name,
-                is_waiting=True
-            )
+                access_code_used=access_code
+            ).first()
+            
+            if existing_entry:
+                # Reuse existing entry - update last_active timestamp
+                existing_entry.last_active = timezone.now()
+                existing_entry.save()
+                candidate_entry = existing_entry
+            else:
+                # Create new candidate entry with access code used
+                candidate_entry = CandidateEntry.objects.create(
+                    event=event,
+                    round=round_obj,
+                    candidate_name=candidate_name,
+                    access_code_used=access_code,
+                    is_waiting=True
+                )
             
             # Store in session
             request.session['candidate_entry_id'] = candidate_entry.id
@@ -609,11 +623,13 @@ def start_round(request, event_id, round_number):
     try:
         round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
         
+        # Ensure access code exists (generate on first visit only)
+        if not round_obj.access_code:
+            round_obj.access_code = generate_access_code()
+            round_obj.save()
+        
         # Handle POST request to start the round
         if request.method == 'POST':
-            # Only generate access code if not already started (first time only)
-            if not round_obj.is_started:
-                round_obj.access_code = generate_access_code()
             round_obj.is_started = True
             round_obj.save()
             logger.info(f"Round {round_number} started - is_started set to: {round_obj.is_started}")
@@ -621,14 +637,12 @@ def start_round(request, event_id, round_number):
             round_obj.refresh_from_db()
             logger.info(f"After refresh - is_started: {round_obj.is_started}")
             messages.success(request, f'Round started! Access code: {round_obj.access_code}. No new candidates can join now.')
-        else:
-            # On GET request, ensure access code exists (for initial access)
-            if not round_obj.access_code:
-                round_obj.access_code = generate_access_code()
-                round_obj.save()
         
-        # Show all candidates who have entered this round
-        all_candidates = CandidateEntry.objects.filter(round=round_obj).order_by('-is_submitted', 'entry_time')
+        # Show ONLY candidates who have entered with the current round's access code
+        all_candidates = CandidateEntry.objects.filter(
+            round=round_obj,
+            access_code_used=round_obj.access_code
+        ).order_by('-is_submitted', 'entry_time')
         
         # Create a list with candidate info including status
         current_time = timezone.now()

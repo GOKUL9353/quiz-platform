@@ -43,6 +43,7 @@ class CandidateEntry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='candidate_entries')
     round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='candidate_entries')
     candidate_name = models.CharField(max_length=255)
+    access_code_used = models.CharField(max_length=10, blank=True, null=True)
     is_waiting = models.BooleanField(default=True)
     is_submitted = models.BooleanField(default=False)
     score = models.IntegerField(default=0, null=True, blank=True)
@@ -56,6 +57,8 @@ class CandidateEntry(models.Model):
     
     class Meta:
         ordering = ['-entry_time']
+        # Prevent duplicate entries: same candidate name + access code per round
+        unique_together = [['round', 'candidate_name', 'access_code_used']]
 
 
 class Question(models.Model):
