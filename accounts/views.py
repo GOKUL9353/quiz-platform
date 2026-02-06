@@ -408,112 +408,76 @@ def quiz_test(request, event_id, round_number):
 
 @csrf_exempt
 def submit_quiz(request):
-    """Handle quiz submission and send results email"""
+    """Handle quiz submission and send results to Telegram"""
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
-    
+
     try:
         data = json.loads(request.body)
         event_id = data.get('event_id')
         round_number = data.get('round_number')
         answers = data.get('answers', {})  # dict of question_id: option_id
         time_taken_seconds = data.get('time_taken_seconds', 0)  # time taken in seconds
-        
+
         # Get event and round
         event = Event.objects.get(id=event_id)
         round_obj = Round.objects.get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
-        
+
         # Get candidate info
         candidate_name = data.get('candidate_name', 'Anonymous')
-        
+
         logger.info(f"Submitting quiz for {candidate_name} - Event: {event.name}, Round: {round_number}")
-        
+
         # Calculate score
         score = 0
         answered_count = 0
         answers_dict = {}
-        
+
         for question_id_str, option_id_str in answers.items():
             try:
                 question_id = int(question_id_str.replace('question_', ''))
                 option_id = int(option_id_str)
-                
+
                 question = Question.objects.get(id=question_id, round=round_obj)
                 option = QuestionOption.objects.get(id=option_id, question=question)
-                
+
                 answers_dict[f'question_{question_id}'] = option_id
                 answered_count += 1
-                
+
                 # Check if correct
                 if option.is_correct:
                     score += 1
             except (Question.DoesNotExist, QuestionOption.DoesNotExist, ValueError) as e:
                 logger.warning(f"Error processing answer for question {question_id_str}: {str(e)}")
                 continue
-        
+
         total_questions = questions.count()
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
-        
+
         logger.info(f"Quiz submission completed - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
-        
-        # Send results email to round owner
-        if round_obj.owner_email:
-            try:
-                logger.info(f"📧 Attempting to send results email to owner: {round_obj.owner_email}")
-                
-                # Check if email is configured
-                if not settings.EMAIL_HOST_USER or not settings.EMAIL_HOST_PASSWORD:
-                    logger.warning('⚠️  Email not configured (missing EMAIL_HOST_USER or EMAIL_HOST_PASSWORD) - skipping owner notification')
-                else:
-                    logger.info(f"✓ Email credentials found, sending to {round_obj.owner_email}")
-                    result = send_quiz_results_email(
-                        owner_email=round_obj.owner_email,
-                        event_name=event.name,
-                        round_number=round_number,
-                        candidate_name=candidate_name,
-                        score=score,
-                        total_questions=total_questions,
-                        time_taken_seconds=time_taken_seconds
-                    )
-                    if result:
-                        logger.info(f"✅ Email sent successfully to {round_obj.owner_email}")
-                    else:
-                        logger.error(f"❌ Email failed to send to {round_obj.owner_email} (check SMTP settings)")
-            except Exception as email_error:
-                logger.error(f"❌ Exception while sending email: {type(email_error).__name__}: {str(email_error)}")
-                logger.error(traceback.format_exc())
-        else:
-            logger.warning(f"⚠️  Round {round_number} has no owner_email set - cannot send results")
-        
-        # Send results email to the candidate
-        candidate_email = data.get('candidate_email')
-        if candidate_email:
-            subject = f"Your Quiz Results for {event.name} - Round {round_number}"
-            html_content = f"""
-                <p>Dear {candidate_name},</p>
-                <p>Thank you for participating in the quiz.</p>
-                <p>Your Score: {score}/{total_questions} ({percentage:.2f}%)</p>
-                <p>Time Taken: {time_taken_seconds} seconds</p>
-                <p>Best regards,<br>Quiz Platform Team</p>
-            """
-            plain_content = f"""
-Dear {candidate_name},
 
-Thank you for participating in the quiz.
+        # Send results to Telegram
+        try:
+            from accounts.utils.telegram import send_telegram_message
 
-Your Score: {score}/{total_questions} ({percentage:.2f}%)
-Time Taken: {time_taken_seconds} seconds
+            message = (
+                f"Quiz Results:\n"
+                f"Candidate: {candidate_name}\n"
+                f"Event: {event.name}\n"
+                f"Round: {round_number}\n"
+                f"Score: {score}/{total_questions} ({percentage:.2f}%)\n"
+                f"Time Taken: {time_taken_seconds} seconds"
+            )
 
-Best regards,
-Quiz Platform Team
-            """
-            email_sent = send_email_with_brevo(candidate_email, subject, html_content, plain_content)
-            if email_sent:
-                logger.info(f"Results email sent to {candidate_email}")
+            telegram_response = send_telegram_message(message)
+            if "error" in telegram_response:
+                logger.error(f"Failed to send Telegram message: {telegram_response['error']}")
             else:
-                logger.error(f"Failed to send results email to {candidate_email}")
-        
+                logger.info("Telegram message sent successfully")
+        except Exception as telegram_error:
+            logger.error(f"Error while sending Telegram message: {str(telegram_error)}")
+
         logger.info(f"✓ Quiz submission completed successfully")
         return JsonResponse({
             'success': True,
@@ -522,7 +486,7 @@ Quiz Platform Team
             'attended': answered_count,
             'percentage': percentage
         })
-        
+
     except Event.DoesNotExist:
         logger.error(f"Event not found with ID: {event_id}")
         return JsonResponse({'success': False, 'error': 'Event not found'}, status=404)
