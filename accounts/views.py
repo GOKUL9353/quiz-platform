@@ -1,16 +1,12 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from .models import Event, Round, Question, QuestionOption, CandidateEntry
-from .email_service import send_quiz_completion_email, send_quiz_results_email, send_email_with_brevo
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.utils import timezone
 import json
 import logging
-import traceback
 import random
 import string
 
@@ -55,6 +51,11 @@ def candidate_login(request):
             # Find the round with this access code
             round_obj = Round.objects.get(access_code=access_code)
             
+            # Check if hosting is active
+            if not round_obj.is_hosting:
+                messages.error(request, 'Hosting has not started yet or has ended! Please ask the host to start hosting.')
+                return redirect('candidate_login')
+            
             # Check if round has already started
             if round_obj.is_started:
                 messages.error(request, 'This round has already started! No new candidates can join.')
@@ -98,104 +99,6 @@ def candidate_login(request):
             return redirect('candidate_login')
     
     return render(request, 'candidate_login.html')
-
-
-# Candidate login - Step 2: Round selection and password verification
-def select_round(request, event_id):
-    """Handle round selection - Step 2"""
-    try:
-        event = Event.objects.get(id=event_id)
-        
-        if request.method == 'POST':
-            candidate_name = request.POST.get('candidate_name')
-            access_code = request.POST.get('access_code')
-            
-            # Validate candidate name
-            if not candidate_name or candidate_name.strip() == '':
-                messages.error(request, 'Please enter your name or team name!')
-                return redirect('candidate_login')
-            
-            # Validate access code is provided
-            if not access_code:
-                messages.error(request, 'Please enter the access code!')
-                return redirect('candidate_login')
-            
-            try:
-                # Find the round with this access code
-                round_obj = Round.objects.get(access_code=access_code)
-                
-                # Create candidate entry and store in session
-                candidate_entry = CandidateEntry.objects.create(
-                    event=round_obj.event,
-                    round=round_obj,
-                    candidate_name=candidate_name.strip(),
-                    is_waiting=True
-                )
-                
-                # Store candidate entry ID in session
-                request.session['candidate_entry_id'] = candidate_entry.id
-                request.session['candidate_name'] = candidate_entry.candidate_name
-                
-                # Redirect to waiting page
-                return redirect('waiting_for_round', event_id=round_obj.event.id, round_number=round_obj.round_number)
-            except Round.DoesNotExist:
-                messages.error(request, 'Invalid access code!')
-                return redirect('candidate_login')
-        
-        # GET request - redirect to candidate login
-        return redirect('candidate_login')
-    except Event.DoesNotExist:
-        messages.error(request, 'Event not found!')
-        return redirect('candidate_login')
-
-
-# Candidate login - Step 3: Access code verification
-def verify_round_login(request, event_id, round_number):
-    """Handle access code verification - Step 3: Verify access code"""
-    if request.method == 'POST':
-        candidate_name = request.POST.get('candidate_name')
-        access_code = request.POST.get('access_code')
-        
-        try:
-            event = Event.objects.get(id=event_id)
-            round_obj = Round.objects.get(event=event, round_number=round_number)
-            
-            # Verify access code
-            if round_obj.access_code and round_obj.access_code == access_code:
-                # Code correct, create candidate entry
-                candidate_entry = CandidateEntry.objects.create(
-                    event=event,
-                    round=round_obj,
-                    candidate_name=candidate_name.strip(),
-                    is_waiting=True
-                )
-                
-                # Store in session
-                request.session['candidate_entry_id'] = candidate_entry.id
-                request.session['candidate_name'] = candidate_entry.candidate_name
-                
-                # Redirect to waiting page
-                return redirect('waiting_for_round', event_id=event_id, round_number=round_number)
-            else:
-                messages.error(request, 'Incorrect access code!')
-        except Round.DoesNotExist:
-            messages.error(request, 'Round not found!')
-        except Event.DoesNotExist:
-            messages.error(request, 'Event not found!')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
-    
-    try:
-        event = Event.objects.get(id=event_id)
-        context = {
-            'event': event,
-            'round_number': round_number,
-            'event_id': event_id
-        }
-        return render(request, 'enter_round_password.html', context)
-    except Event.DoesNotExist:
-        messages.error(request, 'Event not found!')
-        return redirect('candidate_login')
 
 
 # Waiting for round to start
@@ -303,11 +206,6 @@ def round_details(request, event_id, round_number):
             round_number=round_number,
             defaults={'duration_minutes': 60}
         )
-        
-        # Auto-generate access code if it doesn't exist
-        if not round_obj.access_code:
-            round_obj.access_code = generate_access_code()
-            round_obj.save()
         
         # Handle POST request for updating round settings
         if request.method == 'POST':
@@ -618,31 +516,36 @@ def update_candidate_active(request, candidate_entry_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def check_hosting_status(request, event_id, round_number):
+    """API endpoint to check if hosting is still active"""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        return JsonResponse({
+            'success': True,
+            'is_hosting': round_obj.is_hosting,
+            'is_started': round_obj.is_started
+        })
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except Exception as e:
+        logger.error(f"check_hosting_status error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 def start_round(request, event_id, round_number):
     """Render the Start Round page with round details and candidates."""
     try:
         round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
         
-        # Ensure access code exists (generate on first visit only)
-        if not round_obj.access_code:
-            round_obj.access_code = generate_access_code()
-            round_obj.save()
-        
-        # Handle POST request to start the round
-        if request.method == 'POST':
-            round_obj.is_started = True
-            round_obj.save()
-            logger.info(f"Round {round_number} started - is_started set to: {round_obj.is_started}")
-            # Refresh from database to ensure we have the latest state
-            round_obj.refresh_from_db()
-            logger.info(f"After refresh - is_started: {round_obj.is_started}")
-            messages.success(request, f'Round started! Access code: {round_obj.access_code}. No new candidates can join now.')
-        
         # Show ONLY candidates who have entered with the current round's access code
         all_candidates = CandidateEntry.objects.filter(
             round=round_obj,
             access_code_used=round_obj.access_code
-        ).order_by('-is_submitted', 'entry_time')
+        ).order_by('-is_submitted', 'entry_time') if round_obj.access_code else []
         
         # Create a list with candidate info including status
         current_time = timezone.now()
@@ -695,12 +598,9 @@ def start_round(request, event_id, round_number):
                 })
             
             display_label = "Candidates - All Status"
-        else:
-            # Before round starts: show only actively waiting candidates (active in last 30 seconds)
-            display_candidates = all_candidates.filter(
-                is_waiting=True,
-                last_active__gte=threshold_30s
-            )
+        elif round_obj.is_hosting:
+            # During hosting: show ALL waiting candidates (not filtering by time since they're just waiting)
+            display_candidates = all_candidates.filter(is_waiting=True)
             
             for candidate in display_candidates:
                 candidates_data.append({
@@ -714,20 +614,179 @@ def start_round(request, event_id, round_number):
                 })
             
             display_label = "Candidates Joined"
+        else:
+            display_label = "No candidates yet"
         
         context = {
             'round': round_obj,
             'candidates_data': candidates_data,
-            'candidates': display_candidates,
+            'candidates': display_candidates if 'display_candidates' in locals() else [],
             'display_label': display_label,
-            'submitted_count': all_candidates.filter(is_submitted=True).count(),
-            'total_count': all_candidates.count(),
+            'submitted_count': all_candidates.filter(is_submitted=True).count() if all_candidates else 0,
+            'total_count': all_candidates.count() if all_candidates else 0,
             'event': round_obj.event,
         }
         return render(request, 'start_round.html', context)
     except Round.DoesNotExist:
         messages.error(request, 'Round not found!')
         return redirect('admin_panel')
+
+
+@csrf_exempt
+def api_start_hosting(request, event_id, round_number):
+    """API endpoint to start hosting - generate NEW access code and set is_hosting=True"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        
+        # Always generate a FRESH access code when starting hosting
+        round_obj.access_code = generate_access_code()
+        round_obj.is_hosting = True
+        round_obj.is_started = False
+        round_obj.save()
+        
+        logger.info(f"New hosting session started for Round {round_number} with access code: {round_obj.access_code}")
+        
+        return JsonResponse({
+            'success': True,
+            'access_code': round_obj.access_code,
+            'message': 'Hosting started successfully with new access code!'
+        })
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except Exception as e:
+        logger.error(f"api_start_hosting error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def api_end_hosting(request, event_id, round_number):
+    """API endpoint to end hosting - clear access code and set is_hosting=False and is_started=False"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj.is_hosting = False
+        round_obj.is_started = False
+        round_obj.access_code = None  # Clear the access code
+        round_obj.save()
+        
+        logger.info(f"Hosting ended for Round {round_number}. Access code cleared.")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Hosting ended successfully! Access code cleared.'
+        })
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except Exception as e:
+        logger.error(f"api_end_hosting error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def api_start_test(request, event_id, round_number):
+    """API endpoint to start test - set is_started=True"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj.is_started = True
+        round_obj.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Test started successfully!'
+        })
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except Exception as e:
+        logger.error(f"api_start_test error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def api_get_candidates(request, event_id, round_number):
+    """API endpoint to get current candidates list"""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        
+        # Get all candidates for this round
+        all_candidates = CandidateEntry.objects.filter(
+            round=round_obj,
+            access_code_used=round_obj.access_code
+        ).order_by('-is_submitted', 'entry_time')
+        
+        current_time = timezone.now()
+        threshold_90s = current_time - timedelta(seconds=90)
+        threshold_30s = current_time - timedelta(seconds=30)
+        
+        candidates_data = []
+        
+        if round_obj.is_started:
+            # After round starts: show only candidates actively giving test or submitted
+            actively_testing = all_candidates.filter(
+                is_waiting=False,
+                is_submitted=False,
+                last_active__gte=threshold_90s
+            )
+            submitted = all_candidates.filter(is_submitted=True)
+            display_candidates = list(submitted) + list(actively_testing)
+            
+            for candidate in display_candidates:
+                if candidate.is_submitted:
+                    status = "Submitted"
+                elif not candidate.is_waiting and candidate.last_active >= threshold_90s:
+                    status = "Giving Test"
+                else:
+                    status = "Left"
+                
+                time_display = ""
+                if candidate.time_taken_seconds:
+                    mins = candidate.time_taken_seconds // 60
+                    secs = candidate.time_taken_seconds % 60
+                    time_display = f"{mins}m {secs}s"
+                
+                candidates_data.append({
+                    'id': candidate.id,
+                    'name': candidate.candidate_name,
+                    'is_submitted': candidate.is_submitted,
+                    'status': status,
+                    'score': candidate.score if candidate.score else 0,
+                    'total_questions': candidate.total_questions if candidate.total_questions else 0,
+                    'time_taken': time_display
+                })
+        else:
+            # Before round starts (hosting): show all waiting candidates (not filtering by time)
+            display_candidates = all_candidates.filter(is_waiting=True)
+            
+            for candidate in display_candidates:
+                candidates_data.append({
+                    'id': candidate.id,
+                    'name': candidate.candidate_name,
+                    'is_submitted': candidate.is_submitted,
+                    'status': 'Waiting',
+                    'score': 0,
+                    'total_questions': 0,
+                    'time_taken': ''
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'candidates': candidates_data
+        })
+    except Round.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+    except Exception as e:
+        logger.error(f"api_get_candidates error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 def end_round(request, event_id, round_number):

@@ -5,8 +5,6 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('login/', views.login_choice, name='login_choice'),
     path('login/candidate/', views.candidate_login, name='candidate_login'),
-    path('login/candidate/select-round/<int:event_id>/', views.select_round, name='select_round'),
-    path('login/candidate/verify-round/<int:event_id>/<int:round_number>/', views.verify_round_login, name='verify_round_login'),
     path('waiting-for-round/<int:event_id>/<int:round_number>/', views.waiting_for_round, name='waiting_for_round'),
     path('login/admin/', views.admin_login, name='admin_login'),
     path('logout/', views.admin_logout, name='admin_logout'),
@@ -25,6 +23,11 @@ urlpatterns = [
     path('api/submit-quiz/', views.submit_quiz, name='submit_quiz'),
     path('api/check-round-started/<int:event_id>/<int:round_number>/', views.check_round_started, name='check_round_started'),
     path('api/update-candidate-active/<int:candidate_entry_id>/', views.update_candidate_active, name='update_candidate_active'),
+    path('api/check-hosting-status/<int:event_id>/<int:round_number>/', views.check_hosting_status, name='check_hosting_status'),
+    path('api/start-hosting/<int:event_id>/<int:round_number>/', views.api_start_hosting, name='api_start_hosting'),
+    path('api/end-hosting/<int:event_id>/<int:round_number>/', views.api_end_hosting, name='api_end_hosting'),
+    path('api/start-test/<int:event_id>/<int:round_number>/', views.api_start_test, name='api_start_test'),
+    path('api/get-candidates/<int:event_id>/<int:round_number>/', views.api_get_candidates, name='api_get_candidates'),
     
     # Quiz test
     path('quiz-test/<int:event_id>/<int:round_number>/', views.quiz_test, name='quiz_test'),

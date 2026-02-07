@@ -29,6 +29,7 @@ class Round(models.Model):
     duration_minutes = models.IntegerField(default=60)
     access_code = models.CharField(max_length=10, blank=True, null=True)
     is_started = models.BooleanField(default=False)
+    is_hosting = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -43,13 +44,13 @@ class CandidateEntry(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='candidate_entries')
     round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='candidate_entries')
     candidate_name = models.CharField(max_length=255)
-    access_code_used = models.CharField(max_length=10, blank=True, null=True)
-    is_waiting = models.BooleanField(default=True)
-    is_submitted = models.BooleanField(default=False)
+    access_code_used = models.CharField(max_length=10, blank=True, null=True, db_index=True)
+    is_waiting = models.BooleanField(default=True, db_index=True)
+    is_submitted = models.BooleanField(default=False, db_index=True)
     score = models.IntegerField(default=0, null=True, blank=True)
     total_questions = models.IntegerField(default=0, null=True, blank=True)
     time_taken_seconds = models.IntegerField(default=0, null=True, blank=True)
-    entry_time = models.DateTimeField(auto_now_add=True)
+    entry_time = models.DateTimeField(auto_now_add=True, db_index=True)
     last_active = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -59,6 +60,10 @@ class CandidateEntry(models.Model):
         ordering = ['-entry_time']
         # Prevent duplicate entries: same candidate name + access code per round
         unique_together = [['round', 'candidate_name', 'access_code_used']]
+        indexes = [
+            models.Index(fields=['round', 'access_code_used']),
+            models.Index(fields=['round', 'is_waiting']),
+        ]
 
 
 class Question(models.Model):

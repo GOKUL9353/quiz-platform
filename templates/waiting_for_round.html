@@ -289,6 +289,38 @@
             });
         }
 
+        // Check if hosting is still active
+        function checkHostingStatus() {
+            if (isRedirecting) return;
+            
+            fetch(`/api/check-hosting-status/${eventId}/${roundNumber}/`)
+                .then(response => response.json())
+                .then(data => {
+                    addDebug(`→ Hosting Status: is_hosting=${data.is_hosting}, is_started=${data.is_started}`);
+                    
+                    // If hosting has ended and test hasn't started, redirect to login
+                    if (data.is_hosting === false && data.is_started === false) {
+                        addDebug(`⛔ HOSTING ENDED - REDIRECTING TO LOGIN...`);
+                        isRedirecting = true;
+                        
+                        // Show message
+                        document.getElementById('waiting-icon').style.display = 'none';
+                        document.getElementById('waiting-title').textContent = 'Hosting Ended';
+                        document.getElementById('status-badge').style.display = 'none';
+                        document.getElementById('waiting-msg').textContent = 'The host has ended the session. Redirecting you back to login...';
+                        
+                        // Redirect after 2 seconds
+                        setTimeout(() => {
+                            addDebug(`🚀 REDIRECTING TO LOGIN...`);
+                            window.location.replace('/login/candidate/');
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    addDebug(`✗ Hosting check error: ${error.message}`);
+                });
+        }
+
         // Poll every 1 second to check if the round has started
         function checkRoundStatus() {
             if (isRedirecting) return;
@@ -327,9 +359,11 @@
 
         // Check status immediately when page loads
         checkRoundStatus();
+        checkHostingStatus();
 
         // Check status every 1 second
         setInterval(checkRoundStatus, 1000);
+        setInterval(checkHostingStatus, 1000);
         
         // Update activity every 15 seconds to keep candidate "active"
         setInterval(updateCandidateActivity, 15000);

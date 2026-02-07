@@ -297,7 +297,7 @@
             letter-spacing: 4px;
         }
 
-        .access-code-hero.locked { color: var(--text-tertiary); text-decoration: line-through; }
+        .access-code-hero.locked { color: var(--text-tertiary); text-decoration: line-through; filter: blur(6px); }
 
         .btn {
             width: 100%;
@@ -518,76 +518,73 @@
             </div>
 
             <div class="table-container">
-                {% if candidates %}
-                    <table>
-                        <thead>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Avatar</th>
+                            <th>Candidate Name</th>
+                            <th>Current Status</th>
+                            <th>Score</th>
+                            <th>Time Taken</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for candidate in candidates_data %}
                             <tr>
-                                <th style="width: 60px;">Avatar</th>
-                                <th>Candidate Name</th>
-                                <th>Current Status</th>
-                                <th>Score</th>
-                                <th>Time Taken</th>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <div class="avatar">{{ candidate.name|first|upper }}</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="candidate-name">{{ candidate.name }}</div>
+                                </td>
+                                <td>
+                                    {% if candidate.status == "Submitted" %}
+                                        <span class="status-pill pill-submitted">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">check</span>
+                                            Submitted
+                                        </span>
+                                    {% elif candidate.status == "Giving Test" %}
+                                        <span class="status-pill pill-active">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>
+                                            In Test
+                                        </span>
+                                    {% elif candidate.status == "Waiting" %}
+                                        <span class="status-pill pill-waiting">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">schedule</span>
+                                            Waiting
+                                        </span>
+                                    {% elif candidate.status == "Left" %}
+                                        <span class="status-pill pill-left">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">close</span>
+                                            Left
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if candidate.is_submitted %}
+                                        <div style="font-weight: 600; color: #1e8e3e;">{{ candidate.score }}/{{ candidate.total_questions }}</div>
+                                    {% else %}
+                                        <div style="color: var(--text-tertiary);">-</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if candidate.time_taken %}
+                                        <div style="font-size: 12px; color: var(--text-secondary);">{{ candidate.time_taken }}</div>
+                                    {% else %}
+                                        <div style="color: var(--text-tertiary);">-</div>
+                                    {% endif %}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {% for candidate in candidates_data %}
-                                <tr>
-                                    <td>
-                                        <div class="avatar-cell">
-                                            <div class="avatar">{{ candidate.name|first|upper }}</div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="candidate-name">{{ candidate.name }}</div>
-                                    </td>
-                                    <td>
-                                        {% if candidate.status == "Submitted" %}
-                                            <span class="status-pill pill-submitted">
-                                                <span class="material-icons-outlined" style="font-size: 14px;">check</span>
-                                                Submitted
-                                            </span>
-                                        {% elif candidate.status == "Giving Test" %}
-                                            <span class="status-pill pill-active">
-                                                <span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>
-                                                In Test
-                                            </span>
-                                        {% elif candidate.status == "Waiting" %}
-                                            <span class="status-pill pill-waiting">
-                                                <span class="material-icons-outlined" style="font-size: 14px;">schedule</span>
-                                                Waiting
-                                            </span>
-                                        {% elif candidate.status == "Left" %}
-                                            <span class="status-pill pill-left">
-                                                <span class="material-icons-outlined" style="font-size: 14px;">close</span>
-                                                Left
-                                            </span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if candidate.is_submitted %}
-                                            <div style="font-weight: 600; color: #1e8e3e;">{{ candidate.score }}/{{ candidate.total_questions }}</div>
-                                        {% else %}
-                                            <div style="color: var(--text-tertiary);">-</div>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if candidate.time_taken %}
-                                            <div style="font-size: 12px; color: var(--text-secondary);">{{ candidate.time_taken }}</div>
-                                        {% else %}
-                                            <div style="color: var(--text-tertiary);">-</div>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <div class="empty-state">
-                        <span class="material-icons-outlined" style="font-size: 48px; color: var(--border);">person_off</span>
-                        <p>No candidates have joined the lobby yet.</p>
-                        <p style="font-size: 12px;">Share the access code below to let them in.</p>
-                    </div>
-                {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div id="emptyState" class="empty-state" {% if candidates_data %}style="display: none;"{% endif %}>
+                    <span class="material-icons-outlined" style="font-size: 48px; color: var(--border);">person_off</span>
+                    <p>No candidates have joined the lobby yet.</p>
+                    <p style="font-size: 12px;">Share the access code below to let them in.</p>
+                </div>
             </div>
         </div>
 
@@ -607,24 +604,30 @@
                         {% if round.is_started %}
                             <div style="font-size: 11px; color: var(--danger); margin-top: 8px; font-weight: 600;">
                                 <span class="material-icons-outlined" style="font-size: 12px; vertical-align: -2px;">lock</span>
-                                ENTRY LOCKED
+                                TEST IN PROGRESS - Code Blurred
                             </div>
-                        {% else %}
+                        {% elif round.is_hosting %}
                             <div style="font-size: 11px; color: var(--success); margin-top: 8px; font-weight: 600;">
                                 <span class="material-icons-outlined" style="font-size: 12px; vertical-align: -2px;">lock_open</span>
                                 ENTRY OPEN
                             </div>
                         {% endif %}
                     {% else %}
-                        <span style="color: var(--text-tertiary);">Generating...</span>
+                        <div style="color: var(--text-tertiary); font-size: 14px; padding: 30px 20px; text-align: center;">
+                            <span class="material-icons-outlined" style="font-size: 40px; display: block; margin-bottom: 8px; opacity: 0.5;">hide_source</span>
+                            No access code yet
+                        </div>
                     {% endif %}
                 </div>
 
                 <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
                     {% if round.is_started %}
-                        The round is currently active. New candidates cannot join using this code anymore.
+                        Code is blurred while test is in progress. Share with students if they join late!
+                        Code is blurred while test is in progress. Share with students if they join late!
+                    {% elif round.is_hosting %}
+                        Share this code with candidates. Once you click "Start Test", entry will be locked.
                     {% else %}
-                        Share this code with candidates. Once you click "Start Round", entry will be locked.
+                        Click "Start Hosting" to generate a fresh access code.
                     {% endif %}
                 </div>
             </div>
@@ -633,37 +636,52 @@
             <div class="control-card" style="flex: 1;">
                 <span class="status-header">Round Controls</span>
 
-                {% if not round.is_started %}
+                {% if not round.is_hosting and not round.is_started %}
                     <div class="round-status-badge rs-inactive">
                         <span class="material-icons-outlined">pause_circle</span>
-                        <span>Round Not Started</span>
+                        <span>Hosting Not Started</span>
                     </div>
                     
-                    <form method="POST" style="margin-top: 24px;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-start">
-                            <span class="material-icons-outlined">play_arrow</span>
-                            Start Round Now
-                        </button>
-                    </form>
+                    <button id="startHostingBtn" class="btn btn-start" style="margin-top: 24px;">
+                        <span class="material-icons-outlined">cloud_upload</span>
+                        Start Hosting
+                    </button>
                     <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
-                        This will start the timer for all connected candidates.
+                        Click to start accepting students and generate access code.
                     </p>
-                {% else %}
+
+                {% elif round.is_hosting and not round.is_started %}
+                    <div class="round-status-badge rs-active">
+                        <span class="material-icons-outlined">cloud_sync</span>
+                        <span>Hosting Active</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px;">
+                        <button id="startTestBtn" class="btn" style="background: var(--success); color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
+                            <span class="material-icons-outlined">play_arrow</span>
+                            Start Test
+                        </button>
+                        <button id="endHostingBtn" class="btn btn-end">
+                            <span class="material-icons-outlined">cloud_off</span>
+                            End Hosting
+                        </button>
+                    </div>
+                    <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
+                        Click "Start Test" to begin, or "End Hosting" to stop accepting students.
+                    </p>
+
+                {% elif round.is_started %}
                     <div class="round-status-badge rs-active">
                         <span class="material-icons-outlined">timelapse</span>
-                        <span>Round In Progress</span>
+                        <span>Test In Progress</span>
                     </div>
 
-                    <form method="POST" action="{% url 'end_round' event.id round.round_number %}" style="margin-top: 24px;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-end">
-                            <span class="material-icons-outlined">stop</span>
-                            End Round
-                        </button>
-                    </form>
+                    <button id="endHostingBtn" class="btn btn-end" style="margin-top: 24px;">
+                        <span class="material-icons-outlined">cloud_off</span>
+                        End Hosting
+                    </button>
                     <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
-                        Force stop the round for all candidates.
+                        Test is running. Click to stop hosting when all students are done.
                     </p>
                 {% endif %}
             </div>
@@ -718,16 +736,135 @@
             }
         }
 
-        // Auto-refresh logic
-        {% if not round.is_started %}
-            setInterval(() => {
-                location.reload();
-            }, 3000);
-        {% else %}
-            setInterval(() => {
-                location.reload();
-            }, 5000);
-        {% endif %}
+        // Handle Start Hosting button
+        document.getElementById('startHostingBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_start_hosting" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error starting hosting: ' + error);
+            }
+        });
+
+        // Handle Start Test button
+        document.getElementById('startTestBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_start_test" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error starting test: ' + error);
+            }
+        });
+
+        // Handle End Hosting button
+        document.getElementById('endHostingBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_end_hosting" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error ending hosting: ' + error);
+            }
+        });
+
+        // Polling to update candidates list (every 3 seconds)
+        setInterval(() => {
+            fetch('{% url "api_get_candidates" event.id round.round_number %}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.candidates) {
+                        updateCandidatesTable(data.candidates);
+                    }
+                })
+                .catch(error => console.error('Polling error:', error));
+        }, 3000);
+
+        function updateCandidatesTable(candidates) {
+            const tbody = document.querySelector('table tbody');
+            if (!tbody) return;
+
+            // Clear existing rows
+            tbody.innerHTML = '';
+
+            // Add new rows
+            candidates.forEach(candidate => {
+                const row = document.createElement('tr');
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                
+                let statusBadge = '';
+                if (candidate.is_submitted) statusBadge = '<span class="status-pill pill-submitted"><span class="material-icons-outlined" style="font-size: 14px;">check</span>Submitted</span>';
+                else if (candidate.status === 'Giving Test') statusBadge = '<span class="status-pill pill-active"><span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>In Test</span>';
+                else if (candidate.status === 'Waiting') statusBadge = '<span class="status-pill pill-waiting"><span class="material-icons-outlined" style="font-size: 14px;">schedule</span>Waiting</span>';
+                else if (candidate.status === 'Left') statusBadge = '<span class="status-pill pill-left"><span class="material-icons-outlined" style="font-size: 14px;">close</span>Left</span>';
+
+                const scoreDisplay = candidate.is_submitted 
+                    ? `<div style="font-weight: 600; color: #1e8e3e;">${candidate.score}/${candidate.total_questions}</div>`
+                    : '<div style="color: var(--text-tertiary);">-</div>';
+
+                const timeDisplay = candidate.time_taken 
+                    ? `<div style="font-size: 12px; color: var(--text-secondary);">${candidate.time_taken}</div>`
+                    : '<div style="color: var(--text-tertiary);">-</div>';
+
+                row.innerHTML = `
+                    <td>
+                        <div class="avatar-cell">
+                            <div class="avatar">${initials}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="candidate-name">${candidate.name}</div>
+                    </td>
+                    <td>
+                        ${statusBadge}
+                    </td>
+                    <td>
+                        ${scoreDisplay}
+                    </td>
+                    <td>
+                        ${timeDisplay}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Show/hide empty state
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) {
+                emptyState.style.display = candidates.length === 0 ? 'flex' : 'none';
+            }
+        }
     </script>
 </body>
 </html>
