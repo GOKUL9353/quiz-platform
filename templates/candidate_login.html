@@ -3,34 +3,13 @@
 {% block title %}Join Quiz - Quiz Platform{% endblock %}
 
 {% block content %}
-<!-- Google Fonts: Inter (UI) & Playfair Display (Branding) -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 
 <div class="page-layout">
     
-    <!-- Animated Background Shapes -->
-    <div class="bg-shape shape-1"></div>
-    <div class="bg-shape shape-2"></div>
-    <div class="bg-shape shape-3"></div>
-
-    <!-- Main Content Wrapper (Split View) -->
     <div class="content-wrapper">
         
-        <!-- LEFT SIDE: Text Content -->
-        <div class="intro-section">
-            <div class="intro-content">
-                <h1 class="intro-title">Ready to<br>Begin?</h1>
-                <p class="intro-text">
-                    Enter your name and the access code to join the room and wait for admin to start the test!
-                </p>
-                <div class="intro-decoration">
-                    <span class="dot"></span>
-                    <span class="line"></span>
-                </div>
-            </div>
-        </div>
-
-        <!-- RIGHT SIDE: Form Card -->
+        <!-- Center Card -->
         <div class="auth-card">
             <!-- Header -->
             <div class="card-header">
@@ -40,7 +19,7 @@
                     </svg>
                 </div>
                 <h2 class="form-title">Join Quiz</h2>
-                <p class="header-subtitle">Secure access for registered candidates</p>
+                <p class="header-subtitle">Enter your details to begin assessment</p>
             </div>
 
             <!-- Alert Container -->
@@ -62,7 +41,7 @@
                 <div class="form-group">
                     <label class="input-label" for="candidate_name">Full Name</label>
                     <div class="input-wrapper">
-                        <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="John Doe" required autofocus>
+                        <input type="text" id="candidate_name" name="candidate_name" class="form-input" placeholder="e.g. John Doe" required autofocus>
                         <div class="input-icon">
                             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -74,7 +53,7 @@
                 <div class="form-group">
                     <label class="input-label" for="access_code">Access Code</label>
                     <div class="input-wrapper">
-                        <input type="password" id="access_code" name="access_code" class="form-input" placeholder="••••••••" required>
+                        <input type="password" id="access_code" name="access_code" class="form-input" placeholder="Enter code" required>
                         <div class="input-icon">
                             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -85,9 +64,6 @@
 
                 <button type="submit" class="btn-submit">
                     <span>Enter Assessment</span>
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
                 </button>
             </form>
 
@@ -97,7 +73,7 @@
                     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                     </svg>
-                    Back to login selection
+                    Back to Selection
                 </a>
             </div>
         </div>
@@ -107,11 +83,13 @@
 <style>
     /* --- VARIABLES & RESET --- */
     :root {
-        --brand-bg-dark: #0f172a;
-        --brand-bg-light: #1e293b;
-        --accent-primary: #3b82f6;
+        --brand-bg: #064e3b; /* Deep Emerald */
+        --brand-accent: #10b981;
+        --card-bg: #ffffff;
+        --text-dark: #1e293b;
+        --text-muted: #64748b;
+        --input-border: #cbd5e1;
         --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-        --font-serif: 'Playfair Display', serif;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -119,136 +97,38 @@
     html, body {
         width: 100%;
         height: 100%;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden;
         font-family: var(--font-sans);
-        background-color: var(--brand-bg-dark);
-        color: #fff;
+        background-color: var(--brand-bg);
+        color: var(--text-dark);
     }
 
     /* --- LAYOUT --- */
     .page-layout {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
+        min-height: 100vh;
         width: 100%;
-        height: 100vh;
-        z-index: 10;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
         padding: 20px;
+        /* Subtle texture over green background */
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
     }
 
-    /* Container for the Two-Column Layout */
     .content-wrapper {
         width: 100%;
-        max-width: 1200px;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 60px;
-        z-index: 10;
-        padding: 0 20px;
-    }
-
-    /* --- LEFT SIDE: TEXT STYLING --- */
-    .intro-section {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
         justify-content: center;
     }
 
-    .intro-title {
-        font-family: var(--font-serif);
-        font-size: 4.5rem;
-        line-height: 1.1;
-        font-weight: 700;
-        margin-bottom: 24px;
-        background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-
-    .intro-text {
-        font-size: 1.25rem;
-        line-height: 1.6;
-        color: rgba(255, 255, 255, 0.75);
-        max-width: 500px;
-        font-weight: 400;
-    }
-
-    .intro-decoration {
-        margin-top: 32px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .intro-decoration .dot {
-        width: 8px;
-        height: 8px;
-        background-color: #3b82f6;
-        border-radius: 50%;
-        box-shadow: 0 0 10px #3b82f6;
-    }
-
-    .intro-decoration .line {
-        width: 60px;
-        height: 2px;
-        background: linear-gradient(90deg, #3b82f6, transparent);
-    }
-
-    /* --- RIGHT SIDE: GLASS CARD --- */
+    /* --- WHITE CARD --- */
     .auth-card {
-        flex: 0 0 440px; /* Fixed width for form */
-        width: 440px;
-        position: relative;
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        width: 100%;
+        max-width: 420px;
+        background: var(--card-bg);
         padding: 40px;
-        border-radius: 24px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
-        transition: transform 0.3s ease;
-    }
-
-    /* --- ANIMATED BACKGROUND SHAPES --- */
-    .bg-shape {
-        position: absolute;
-        filter: blur(90px);
-        z-index: 1;
-        opacity: 0.35;
-        animation: float 12s infinite ease-in-out;
-    }
-
-    .shape-1 {
-        top: -15%; left: -10%; width: 60vw; height: 60vw;
-        background: radial-gradient(circle, #2563eb, transparent 60%);
-        animation-delay: 0s;
-    }
-    .shape-2 {
-        bottom: -20%; right: -10%; width: 50vw; height: 50vw;
-        background: radial-gradient(circle, #7c3aed, transparent 60%);
-        animation-delay: -4s;
-    }
-    .shape-3 {
-        top: 40%; left: 40%; width: 30vw; height: 30vw;
-        background: radial-gradient(circle, #0ea5e9, transparent 70%);
-        animation-delay: -8s; opacity: 0.2;
-    }
-
-    @keyframes float {
-        0%, 100% { transform: translate(0, 0); }
-        33% { transform: translate(30px, -30px); }
-        66% { transform: translate(-20px, 20px); }
+        border-radius: 16px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     }
 
     /* --- HEADER --- */
@@ -261,218 +141,146 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 64px;
-        height: 64px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-        color: #60A5FA;
-        border-radius: 20px;
-        margin-bottom: 24px;
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        box-shadow: inset 0 0 20px rgba(255,255,255,0.02);
+        width: 56px;
+        height: 56px;
+        background: #ecfdf5;
+        color: #059669;
+        border-radius: 12px;
+        margin-bottom: 20px;
     }
 
-    .logo-icon { width: 32px; height: 32px; }
+    .logo-icon { width: 28px; height: 28px; }
 
     .form-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
-        color: #fff;
+        color: var(--text-dark);
         margin-bottom: 8px;
     }
 
     .header-subtitle {
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--text-muted);
         font-size: 0.95rem;
     }
 
     /* --- FORM INPUTS --- */
-    .form-group { margin-bottom: 24px; }
+    .form-group { margin-bottom: 20px; }
 
     .input-label {
         font-size: 0.85rem;
-        font-weight: 500;
-        color: rgba(255, 255, 255, 0.8);
+        font-weight: 600;
+        color: #334155;
         margin-bottom: 8px;
         display: block;
-        margin-left: 4px;
     }
 
     .input-wrapper { position: relative; }
 
     .form-input {
         width: 100%;
-        height: 50px;
-        padding: 0 48px 0 16px; /* Right padding for icon */
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        color: #fff;
+        height: 48px;
+        padding: 0 40px 0 16px;
+        background: #f8fafc;
+        border: 1px solid var(--input-border);
+        border-radius: 8px;
+        color: var(--text-dark);
         font-size: 1rem;
         font-family: var(--font-sans);
         transition: all 0.2s ease;
     }
 
-    .form-input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    .form-input::placeholder { color: #94a3b8; }
 
     .form-input:focus {
         outline: none;
-        background: rgba(255, 255, 255, 0.08);
-        border-color: #60A5FA;
-        box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.1);
+        background: #fff;
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
 
     .input-icon {
         position: absolute;
-        right: 14px;
+        right: 12px;
         top: 50%;
         transform: translateY(-50%);
-        color: rgba(255, 255, 255, 0.4);
+        color: #94a3b8;
         pointer-events: none;
         transition: color 0.2s;
     }
 
-    .form-input:focus + .input-icon { color: #60A5FA; }
+    .form-input:focus + .input-icon { color: var(--brand-accent); }
 
     /* --- BUTTON --- */
     .btn-submit {
         width: 100%;
-        height: 54px;
+        height: 48px;
         border: none;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        border-radius: 8px;
+        background: var(--brand-bg);
         color: white;
         font-size: 1rem;
         font-weight: 600;
-        font-family: var(--font-sans);
         cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        position: relative;
-        overflow: hidden;
-    }
-
-    /* Shine effect */
-    .btn-submit::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: 0.5s;
+        transition: background 0.2s;
+        margin-top: 8px;
     }
 
     .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(37, 99, 235, 0.4);
+        background-color: #065f46; /* Slightly lighter on hover */
     }
-    
-    .btn-submit:hover::after { left: 100%; }
-    
-    .btn-submit:active { transform: translateY(0); }
     
     .btn-submit:disabled {
         opacity: 0.7;
         cursor: not-allowed;
-        transform: none;
     }
 
     /* --- FOOTER --- */
-    .form-footer { margin-top: 32px; text-align: center; }
+    .form-footer { margin-top: 24px; text-align: center; }
 
     .link-back {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.5);
+        color: var(--text-muted);
         text-decoration: none;
         transition: color 0.2s;
     }
 
-    .link-back:hover { color: #60A5FA; }
+    .link-back:hover { color: var(--brand-bg); }
 
     /* --- ALERTS --- */
     .alert-message {
         padding: 12px 16px;
-        border-radius: 10px;
+        border-radius: 8px;
         margin-bottom: 24px;
         font-size: 0.9rem;
-        display: flex;
-        align-items: center;
-        animation: slideDown 0.3s ease-out;
-    }
-
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        display: block;
+        text-align: left;
     }
 
     .alert-error {
-        background: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #fca5a5;
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        color: #991b1b;
     }
     
     .alert-success {
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #6ee7b7;
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+        color: #065f46;
     }
 
-    /* --- RESPONSIVE MEDIA QUERIES --- */
-    @media (max-width: 960px) {
-        .content-wrapper {
-            flex-direction: column;
-            justify-content: center;
-            gap: 40px;
-            padding-top: 40px;
-            padding-bottom: 40px;
-            height: auto;
-        }
-
-        .page-layout {
-            height: auto;
-            min-height: 100vh;
-            overflow-y: auto;
-        }
-
-        .intro-section {
-            text-align: center;
-            align-items: center;
-        }
-
-        .intro-title {
-            font-size: 3rem;
-        }
-
-        .intro-decoration {
-            justify-content: center;
-        }
-
-        .auth-card {
-            width: 100%;
-            max-width: 440px;
-            flex: 0 0 auto;
-        }
-    }
-
+    /* --- RESPONSIVE --- */
     @media (max-width: 480px) {
-        .auth-card { padding: 32px 24px; }
-        .form-title { font-size: 1.75rem; }
-        .intro-title { font-size: 2.5rem; }
+        .auth-card { padding: 32px 20px; }
+        .form-title { font-size: 1.5rem; }
     }
 </style>
 
 <script>
     function displayMessage(message, type = 'error') {
         const container = document.getElementById('alert-container');
-        // Check if message tags contain 'success' or 'error'
         const isError = type.includes('error') || (!type.includes('success'));
         const bgClass = isError ? 'alert-error' : 'alert-success';
 
@@ -487,7 +295,6 @@
     document.getElementById('login-form').addEventListener('submit', function(e) {
         const btn = document.querySelector('.btn-submit');
         
-        // Basic client-side check
         const name = document.getElementById('candidate_name').value.trim();
         const code = document.getElementById('access_code').value.trim();
 
@@ -497,9 +304,8 @@
             return;
         }
 
-        // Add loading state
         btn.disabled = true;
-        btn.innerHTML = '<span>Joining...</span>';
+        btn.innerHTML = '<span>Processing...</span>';
     });
 </script>
 {% endblock %}

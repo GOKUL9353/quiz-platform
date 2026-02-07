@@ -69,12 +69,11 @@
 </div>
 
 <style>
-    /* --- CSS VARIABLES (Consistent with previous pages) --- */
+    /* --- CSS VARIABLES --- */
     :root {
-        --color-bg: #F3F4F6;
+        --brand-bg: #064e3b;
+        --brand-accent: #10b981;
         --color-surface: #FFFFFF;
-        --color-primary: #4F46E5; /* Slightly more purple/indigo for Admin to differentiate */
-        --color-primary-dark: #4338CA;
         --color-text-main: #111827;
         --color-text-muted: #6B7280;
         --color-border: #E5E7EB;
@@ -89,7 +88,9 @@
 
     body {
         font-family: var(--font-family);
-        background-color: var(--color-bg);
+        background-color: var(--brand-bg);
+        background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 40px 40px;
         color: var(--color-text-main);
         min-height: 100vh;
         display: flex;
@@ -127,8 +128,8 @@
         justify-content: center;
         width: 56px;
         height: 56px;
-        background-color: #EEF2FF;
-        color: var(--color-primary);
+        background-color: #ecfdf5;
+        color: var(--brand-bg);
         border-radius: 50%;
         margin-bottom: 20px;
     }
@@ -163,7 +164,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background-color: var(--color-error-bg); /* Defaulting to red for Admin errors */
+        background-color: var(--color-error-bg);
         color: var(--color-error-text);
         border: 1px solid #FECACA;
         animation: slideDown 0.3s ease-out;
@@ -195,7 +196,7 @@
     .form-control {
         width: 100%;
         height: 48px;
-        padding: 0 16px 0 44px; /* Left padding for icon */
+        padding: 0 16px 0 44px;
         font-size: 0.95rem;
         border: 1px solid var(--color-border);
         border-radius: 6px;
@@ -207,8 +208,8 @@
 
     .form-control:focus {
         outline: none;
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
     }
 
     .input-icon {
@@ -240,14 +241,14 @@
     }
 
     .btn-primary {
-        background-color: var(--color-primary);
+        background-color: var(--brand-bg);
         color: white;
     }
 
     .btn-primary:hover {
-        background-color: var(--color-primary-dark);
+        background-color: #065f46;
         transform: translateY(-1px);
-        box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.25);
+        box-shadow: 0 4px 6px -1px rgba(6, 78, 59, 0.25);
     }
 
     .btn-arrow {
@@ -279,7 +280,7 @@
     }
 
     .link-muted:hover {
-        color: var(--color-primary);
+        color: var(--brand-bg);
     }
 
     .link-icon {

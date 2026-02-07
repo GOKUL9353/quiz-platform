@@ -80,7 +80,7 @@
     .page-layout {
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+        background-color: var(--space-bg);
         overflow: hidden;
     }
 
@@ -96,12 +96,7 @@
         position: absolute;
         background: white;
         border-radius: 50%;
-        animation: twinkle var(--duration) ease-in-out infinite;
-    }
-
-    @keyframes twinkle {
-        0%, 100% { opacity: var(--min-opacity); transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.2); }
+        opacity: 0.8;
     }
 
     /* --- BUBBLES --- */
@@ -120,12 +115,10 @@
         justify-content: center;
         text-align: center;
         font-size: 0.75rem;
-        color: rgba(255,255,255,0.8);
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        box-shadow: 0 0 10px rgba(255, 255, 255, 0.02);
-        backdrop-filter: blur(2px);
-        will-change: transform;
+        color: rgba(255,255,255,0.9);
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -133,12 +126,12 @@
     }
 
     .bubble.is-me {
-        background: rgba(99, 102, 241, 0.15);
-        border: 1px solid rgba(99, 102, 241, 0.4);
+        background: rgba(99, 102, 241, 0.4);
+        border: 1px solid rgba(99, 102, 241, 0.8);
         color: #fff;
         font-weight: 600;
         z-index: 2;
-        box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.4);
     }
 
     /* --- BOTTOM DOCK UI --- */
@@ -150,12 +143,6 @@
         display: flex;
         justify-content: center;
         z-index: 50;
-        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    @keyframes slideUp {
-        from { transform: translateY(100px); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
     }
 
     .glass-bar {
@@ -195,14 +182,7 @@
     .countdown-num {
         font-size: 1.5rem;
         font-weight: 700;
-        color: #4ade80; /* Green for go */
-        animation: pulseCount 0.9s infinite;
-    }
-
-    @keyframes pulseCount {
-        0% { transform: scale(0.8); opacity: 0.7; }
-        50% { transform: scale(1.1); opacity: 1; }
-        100% { transform: scale(0.8); opacity: 0.7; }
+        color: #4ade80;
     }
 
     /* Text Content */
@@ -264,7 +244,6 @@
 
     .error-box {
         text-align: center;
-        animation: scaleIn 0.3s ease;
     }
 
     .error-box span { font-size: 3rem; color: #ef4444; margin-bottom: 10px; display: block; }
@@ -289,34 +268,36 @@
     
     let isRedirecting = false;
 
+    // --- Prevent access on page refresh ---
+    const sessionKey = `waiting_session_${candidateEntryId}`;
+    let isFirstVisit = false;
+    if (!sessionStorage.getItem(sessionKey)) {
+        // First visit, set the session marker
+        sessionStorage.setItem(sessionKey, 'active');
+        isFirstVisit = true;
+    } else {
+        // Page refresh detected - redirect to login
+        isRedirecting = true;
+        window.location.replace('/login/candidate/');
+    }
+
     // --- Starfield Generation ---
     function createStars() {
         const container = document.getElementById('star-container');
-        const starCount = 150; // Number of stars
+        const starCount = 150;
 
         for (let i = 0; i < starCount; i++) {
             const star = document.createElement('div');
             star.className = 'star';
             
-            // Random Position
             const x = Math.random() * 100;
             const y = Math.random() * 100;
-            
-            // Random Size (1px to 3px)
             const size = Math.random() * 2 + 1;
-            
-            // Random Opacity Baseline (Some bright, some dim)
-            const minOpacity = Math.random() * 0.7 + 0.1; 
-            
-            // Random Animation Duration (Twinkle speed)
-            const duration = Math.random() * 3 + 2; 
 
             star.style.left = `${x}%`;
             star.style.top = `${y}%`;
             star.style.width = `${size}px`;
             star.style.height = `${size}px`;
-            star.style.setProperty('--min-opacity', minOpacity);
-            star.style.setProperty('--duration', `${duration}s`);
             
             container.appendChild(star);
         }
@@ -332,14 +313,14 @@
         if (isMe) el.classList.add('is-me');
         el.textContent = name;
         
-        const size = Math.floor(Math.random() * 30) + 60; // 60-90px
+        const size = Math.floor(Math.random() * 30) + 60;
         el.style.width = `${size}px`;
         el.style.height = `${size}px`;
 
         const x = Math.random() * (window.innerWidth - size);
         const y = Math.random() * (window.innerHeight - size);
-        const dx = (Math.random() - 0.5) * 0.5; // Very slow drift for space feel
-        const dy = (Math.random() - 0.5) * 0.5; 
+        const dx = (Math.random() - 0.5) * 0.5;
+        const dy = (Math.random() - 0.5) * 0.5;
 
         el.style.transform = `translate(${x}px, ${y}px)`;
         bubbleContainer.appendChild(el);
@@ -349,22 +330,6 @@
 
     if(currentCandidateName) { bubbles.push(createBubble("You", true)); }
 
-    // --- On Page Load/Refresh: Ensure candidate is properly registered ---
-    function initializeWaitingStatus() {
-        if (candidateEntryId && candidateEntryId !== "null") {
-            // Update activity immediately to ensure they don't get filtered out
-            updateCandidateActivity();
-            
-            // Mark as waiting in case of refresh
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-            fetch(`/api/init-waiting/${candidateEntryId}/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
-                keepalive: true
-            }).catch(err => console.debug("Init waiting failed (may be expected):", err.message));
-        }
-    }
-
     function animateBubbles() {
         const width = window.innerWidth;
         const height = window.innerHeight;
@@ -373,13 +338,12 @@
             b.x += b.dx;
             b.y += b.dy;
 
-            // Boundary checking with clamping to prevent going out of frame
             if (b.x + b.size > width) {
-                b.dx = -Math.abs(b.dx); // Ensure positive bounce inward
+                b.dx = -Math.abs(b.dx);
                 b.x = width - b.size;
             }
             if (b.x < 0) {
-                b.dx = Math.abs(b.dx); // Ensure negative bounce inward
+                b.dx = Math.abs(b.dx);
                 b.x = 0;
             }
             if (b.y + b.size > height) {
@@ -395,6 +359,28 @@
         });
         requestAnimationFrame(animateBubbles);
     }
+
+    // --- On Page Load/Refresh: Ensure candidate is properly registered ---
+    async function initializeWaitingStatus() {
+        if (candidateEntryId && candidateEntryId !== "null") {
+            // Update activity immediately to ensure they don't get filtered out
+            updateCandidateActivity();
+            
+            // Mark as waiting in case of refresh
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            try {
+                await fetch(`/api/init-waiting/${candidateEntryId}/`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+                    keepalive: true
+                });
+            } catch (err) {
+                console.debug("Init waiting failed:", err.message);
+            }
+        }
+    }
+
+
 
     // --- Logic: Countdown & Redirect ---
 
@@ -426,6 +412,8 @@
             } else {
                 clearInterval(timer);
                 countDisplay.textContent = "Go!";
+                // Clear session marker before moving to quiz
+                sessionStorage.removeItem(sessionKey);
                 window.location.replace(`/quiz-test/${eventId}/${roundNumber}/`);
             }
         }, 1000);
@@ -487,6 +475,8 @@
                 if (data.is_hosting === false && data.is_started === false) {
                     isRedirecting = true;
                     document.getElementById('error-overlay').style.display = 'flex';
+                    // Clear session marker on error
+                    sessionStorage.removeItem(sessionKey);
                     setTimeout(() => window.location.replace('/login/candidate/'), 3000);
                 }
             })
@@ -499,6 +489,8 @@
             if (candidateEntryId && candidateEntryId !== "null") {
                 navigator.sendBeacon(`/api/exit-waiting/${candidateEntryId}/`);
             }
+            // Clear session marker on exit
+            sessionStorage.removeItem(sessionKey);
             window.location.replace('/login/candidate/');
         }
     }
@@ -507,20 +499,38 @@
     createStars();
     animateBubbles();
     
-    // API Polling
-    initializeWaitingStatus(); // Call first on page load/refresh
-    updateCandidateActivity();
-    loadWaitingMembers();
-    checkStatus();
-    
-    setInterval(checkStatus, 1000);
-    setInterval(loadWaitingMembers, 3000);
-    setInterval(updateCandidateActivity, 15000);
+    // Initialize and start polling
+    (async () => {
+        // Register candidate only on first visit (not on refresh)
+        if (isFirstVisit) {
+            await initializeWaitingStatus();
+        }
+        
+        // API Polling
+        updateCandidateActivity();
+        loadWaitingMembers();
+        checkStatus();
+        
+        setInterval(checkStatus, 1000);
+        setInterval(loadWaitingMembers, 3000);
+        setInterval(updateCandidateActivity, 15000);
+    })();
 
-    // Unload handling
+    // Unload handling - Exit on refresh/close/tab close/internet drop
     window.addEventListener('beforeunload', () => {
-        if (!isRedirecting && candidateEntryId) {
+        if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
             navigator.sendBeacon(`/api/exit-waiting/${candidateEntryId}/`);
+        }
+        // Clear session marker on unload so they can enter waiting room again if needed
+        sessionStorage.removeItem(sessionKey);
+    });
+
+    // Handle visibility change (tab hidden)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+                navigator.sendBeacon(`/api/exit-waiting/${candidateEntryId}/`);
+            }
         }
     });
 </script>
