@@ -517,6 +517,40 @@ def update_candidate_active(request, candidate_entry_id):
 
 
 @csrf_exempt
+def exit_waiting(request, candidate_entry_id):
+    """API endpoint to mark candidate as exited from waiting room"""
+    # Accept both GET and POST (sendBeacon uses POST)
+    try:
+        candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+        candidate_entry.is_waiting = False
+        candidate_entry.save()
+        return JsonResponse({'success': True, 'message': 'Candidate marked as exited'})
+    except CandidateEntry.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
+    except Exception as e:
+        logger.error(f"exit_waiting error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def init_waiting(request, candidate_entry_id):
+    """API endpoint to initialize/refresh candidate's waiting status on page load/refresh"""
+    try:
+        candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+        # Ensure candidate is marked as waiting and update last_active
+        candidate_entry.is_waiting = True
+        candidate_entry.last_active = timezone.now()
+        candidate_entry.save()
+        logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-initialized waiting status")
+        return JsonResponse({'success': True, 'message': 'Waiting status initialized'})
+    except CandidateEntry.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
+    except Exception as e:
+        logger.error(f"init_waiting error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
 def check_hosting_status(request, event_id, round_number):
     """API endpoint to check if hosting is still active"""
     if request.method != 'GET':
@@ -727,6 +761,7 @@ def api_get_candidates(request, event_id, round_number):
         current_time = timezone.now()
         threshold_90s = current_time - timedelta(seconds=90)
         threshold_30s = current_time - timedelta(seconds=30)
+        threshold_45s = current_time - timedelta(seconds=45)  # For waiting room timeout
         
         candidates_data = []
         
@@ -764,8 +799,12 @@ def api_get_candidates(request, event_id, round_number):
                     'time_taken': time_display
                 })
         else:
-            # Before round starts (hosting): show all waiting candidates (not filtering by time)
-            display_candidates = all_candidates.filter(is_waiting=True)
+            # Before round starts (hosting): show only waiting candidates who are still active
+            # Filter out candidates with no recent activity (last_active older than 45 seconds)
+            display_candidates = all_candidates.filter(
+                is_waiting=True,
+                last_active__gte=threshold_45s  # Only show active candidates
+            )
             
             for candidate in display_candidates:
                 candidates_data.append({
