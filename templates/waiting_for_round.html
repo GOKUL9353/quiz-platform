@@ -1,0 +1,855 @@
+{% extends 'base.html' %}
+
+{% block title %}Waiting Room - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Google Fonts with preload -->
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+
+<div class="page-layout">
+    
+    <!-- Starfield Layer -->
+    <div id="star-container"></div>
+
+    <!-- Interactive Candidate Bubbles Layer (Floating in space) -->
+    <div id="bubble-container"></div>
+
+    <!-- Bottom Status Bar (Compact) -->
+    <div class="bottom-dock">
+        <div class="glass-bar">
+            
+            <!-- Loading Indicator / Countdown Circle -->
+            <div class="status-icon-container">
+                <div class="spinner" id="status-spinner"></div>
+                <div class="countdown-num" id="countdown-display" style="display: none;">3</div>
+            </div>
+
+            <!-- Text Info -->
+            <div class="status-content">
+                <h2 id="main-status-text">Waiting for Host</h2>
+                <div class="sub-info">
+                    <span id="waiting-count-text">You and <span id="count-num">0</span> others waiting</span>
+                    <span class="dot-separator">•</span>
+                    <span class="event-meta">{{ event.name }} (R{{ round.round_number }})</span>
+                </div>
+            </div>
+
+            <!-- Exit Button (Integrated into bar) -->
+            <button class="icon-btn" onclick="exitWaiting()" title="Exit Room">
+                <span class="material-icons-outlined">logout</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Full Screen Overlay for "Session Ended" error -->
+    <div id="error-overlay" class="error-overlay">
+        <div class="error-box">
+            <span class="material-icons-outlined">error_outline</span>
+            <h3>Session Ended</h3>
+            <p>The host has ended this round.</p>
+        </div>
+    </div>
+
+</div>
+
+<style>
+    /* --- THEME VARIABLES --- */
+    :root {
+        --space-bg: #050510;
+        --glass-bg: rgba(20, 20, 30, 0.65);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --accent: #6366f1;
+        --text-main: #ffffff;
+        --text-muted: rgba(255, 255, 255, 0.5);
+        --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+        font-family: var(--font-sans);
+        background-color: var(--space-bg) !important;
+        background: var(--space-bg) !important;
+        color: var(--text-main);
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        margin: 0 !important;
+        padding: 0 !important;
+        display: block !important;
+    }
+
+    /* Override base.html container styles */
+    .container {
+        background: transparent !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-width: 100% !important;
+        min-height: 100% !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: block !important;
+        flex-direction: unset !important;
+        justify-content: unset !important;
+        align-items: unset !important;
+        margin: 0 !important;
+    }
+
+    /* --- LAYOUT & BACKGROUND --- */
+    .page-layout {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--space-bg);
+        overflow: hidden;
+        contain: layout style paint;
+    }
+
+    /* --- STARS --- */
+    #star-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        contain: layout style paint;
+    }
+
+    .star {
+        position: absolute;
+        background: white;
+        border-radius: 50%;
+        opacity: 0.8;
+    }
+
+    /* --- BUBBLES --- */
+    #bubble-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        pointer-events: none;
+        contain: layout style paint;
+    }
+    
+    .bubble {
+        position: absolute;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.9);
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        padding: 4px;
+        will-change: transform;
+    }
+
+    .bubble.is-me {
+        background: rgba(99, 102, 241, 0.4);
+        border: 1px solid rgba(99, 102, 241, 0.8);
+        color: #fff;
+        font-weight: 600;
+        z-index: 2;
+        box-shadow: 0 0 25px rgba(99, 102, 241, 0.4);
+    }
+
+    /* --- BOTTOM DOCK UI --- */
+    .bottom-dock {
+        position: fixed;
+        bottom: 40px;
+        left: 0; 
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        z-index: 50;
+        contain: layout style paint;
+    }
+
+    .glass-bar {
+        background: var(--glass-bg);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
+        min-width: 320px;
+        max-width: 90%;
+        will-change: border-color;
+    }
+
+    /* Spinner & Countdown */
+    .status-icon-container {
+        position: relative;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .spinner {
+        width: 24px;
+        height: 24px;
+        border: 2px solid rgba(255,255,255,0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { 
+        to { 
+            transform: rotate(360deg); 
+        } 
+    }
+
+    .countdown-num {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #4ade80;
+    }
+
+    /* Text Content */
+    .status-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 0;
+    }
+
+    #main-status-text {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 2px;
+        letter-spacing: 0.3px;
+        will-change: color;
+    }
+
+    .sub-info {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .dot-separator { 
+        font-size: 1.2rem;
+        line-height: 0;
+        margin-top: -2px;
+        opacity: 0.5;
+        flex-shrink: 0;
+    }
+
+    .event-meta {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Exit Button */
+    .icon-btn {
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        color: #f87171;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease-out;
+        flex-shrink: 0;
+    }
+
+    .icon-btn:hover {
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+    }
+    
+    .icon-btn:active {
+        transform: scale(0.95);
+    }
+
+    .icon-btn span { 
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* --- ERROR OVERLAY --- */
+    .error-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .error-box {
+        text-align: center;
+    }
+
+    .error-box span { 
+        font-size: 3rem;
+        color: #ef4444;
+        margin-bottom: 10px;
+        display: block;
+    }
+
+    .error-box h3 { 
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+
+    .error-box p { 
+        color: var(--text-muted);
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 768px) {
+        .glass-bar {
+            min-width: 280px;
+            padding: 10px 15px;
+            gap: 12px;
+        }
+        
+        .bottom-dock {
+            bottom: 30px;
+        }
+        
+        .sub-info {
+            font-size: 0.7rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .glass-bar {
+            width: 90%;
+            padding: 10px 12px;
+            min-width: auto;
+        }
+
+        .bottom-dock {
+            bottom: 20px;
+        }
+
+        .sub-info {
+            font-size: 0.65rem;
+        }
+
+        .event-meta {
+            display: none;
+        }
+
+        .status-icon-container {
+            width: 36px;
+            height: 36px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+        }
+
+        .icon-btn span {
+            font-size: 1rem;
+        }
+    }
+
+    /* Reduce animations on lower-end devices */
+    @media (prefers-reduced-motion: reduce) {
+        .spinner {
+            animation: none;
+            border-top-color: var(--accent);
+            opacity: 0.6;
+        }
+
+        .bubble {
+            will-change: auto;
+        }
+    }
+
+    /* Performance: disable animations on very low spec devices */
+    @media (max-width: 380px) {
+        .bubble {
+            will-change: auto;
+        }
+    }
+</style>
+
+<script>
+    // --- Configuration ---
+    const DEBUG = false;
+    const candidateEntryId = "{{ candidate_entry_id|default:'null' }}";
+    const eventId = "{{ event.id }}";
+    const roundNumber = "{{ round.round_number }}";
+    const currentCandidateName = "{{ candidate_name }}";
+    
+    // Debug logging
+    const log = (msg, data) => {
+        if (DEBUG) console.log(msg, data || '');
+    };
+    
+    log('waiting_for_round.html loaded');
+    log('candidateEntryId:', candidateEntryId);
+    log('eventId:', eventId);
+    log('roundNumber:', roundNumber);
+    log('currentCandidateName:', currentCandidateName);
+    
+    let isRedirecting = false;
+    let animationFrameId = null;
+    let statusCheckInterval = null;
+    let memberCheckInterval = null;
+    let heartbeatInterval = null;
+
+    // --- Prevent access on page refresh ---
+    const sessionKey = `waiting_session_${candidateEntryId}`;
+    let isFirstVisit = false;
+    if (!sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, 'active');
+        isFirstVisit = true;
+    } else {
+        isRedirecting = true;
+        window.location.replace('/login/candidate/');
+    }
+
+    // --- Cache DOM Elements ---
+    let cachedElements = {};
+    function cacheElements() {
+        cachedElements = {
+            starContainer: document.getElementById('star-container'),
+            bubbleContainer: document.getElementById('bubble-container'),
+            mainStatusText: document.getElementById('main-status-text'),
+            statusSpinner: document.getElementById('status-spinner'),
+            countdownDisplay: document.getElementById('countdown-display'),
+            countNum: document.getElementById('count-num'),
+            glassBar: document.querySelector('.glass-bar'),
+            errorOverlay: document.getElementById('error-overlay'),
+            subInfo: document.querySelector('.sub-info')
+        };
+    }
+
+    // --- Starfield Generation (Optimized) ---
+    function createStars() {
+        log('createStars() called');
+        const container = cachedElements.starContainer;
+        
+        if (!container) {
+            console.error('star-container not found!');
+            return;
+        }
+        
+        const starCount = window.innerWidth < 540 ? 80 : 120;
+        const fragment = document.createDocumentFragment();
+
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
+            const size = Math.random() * 2 + 0.5;
+
+            star.style.left = x + '%';
+            star.style.top = y + '%';
+            star.style.width = size + 'px';
+            star.style.height = size + 'px';
+            
+            fragment.appendChild(star);
+        }
+        
+        container.appendChild(fragment);
+        log('Created', starCount, 'stars');
+    }
+
+    // --- Bubble System (Optimized) ---
+    let bubbles = []; 
+    let lastBubbleUpdate = 0;
+    const BUBBLE_UPDATE_THROTTLE = 100; // ms
+
+    function createBubble(name, isMe = false) {
+        const container = cachedElements.bubbleContainer;
+        if (!container) {
+            console.error('bubbleContainer is null!');
+            return null;
+        }
+        
+        const el = document.createElement('div');
+        el.className = 'bubble' + (isMe ? ' is-me' : '');
+        el.textContent = name;
+        el.setAttribute('data-name', name);
+        
+        const size = Math.floor(Math.random() * 30) + 60;
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+
+        const x = Math.random() * (window.innerWidth - size);
+        const y = Math.random() * (window.innerHeight - size);
+        const dx = (Math.random() - 0.5) * 0.3;
+        const dy = (Math.random() - 0.5) * 0.3;
+
+        el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        container.appendChild(el);
+
+        return { el, x, y, dx, dy, size, name };
+    }
+
+    function animateBubbles() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        bubbles.forEach(b => {
+            b.x += b.dx;
+            b.y += b.dy;
+
+            // Boundary checking with minimum velocity
+            if (b.x + b.size > width) {
+                b.dx = -Math.abs(b.dx);
+                b.x = width - b.size;
+            }
+            if (b.x < 0) {
+                b.dx = Math.abs(b.dx);
+                b.x = 0;
+            }
+            if (b.y + b.size > height) {
+                b.dy = -Math.abs(b.dy);
+                b.y = height - b.size;
+            }
+            if (b.y < 0) {
+                b.dy = Math.abs(b.dy);
+                b.y = 0;
+            }
+            
+            b.el.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)';
+        });
+        
+        animationFrameId = requestAnimationFrame(animateBubbles);
+    }
+
+    // --- Initialize Waiting Status ---
+    async function initializeWaitingStatus() {
+        if (candidateEntryId && candidateEntryId !== "null") {
+            updateCandidateActivity();
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            try {
+                await fetch('/api/init-waiting/' + candidateEntryId + '/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+                    keepalive: true
+                });
+            } catch (err) {
+                log("Init waiting failed:", err.message);
+            }
+        }
+    }
+
+    // --- Countdown & Start Sequence ---
+    function triggerStartSequence() {
+        isRedirecting = true;
+        
+        const mainText = cachedElements.mainStatusText;
+        const subInfo = cachedElements.subInfo;
+        const spinner = cachedElements.statusSpinner;
+        const countDisplay = cachedElements.countdownDisplay;
+        const glassBar = cachedElements.glassBar;
+
+        mainText.textContent = "Round Started!";
+        mainText.style.color = "#4ade80";
+        subInfo.style.display = "none";
+        
+        spinner.style.display = "none";
+        countDisplay.style.display = "block";
+        glassBar.style.borderColor = "rgba(74, 222, 128, 0.5)";
+
+        let count = 3;
+        countDisplay.textContent = count;
+
+        const timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countDisplay.textContent = count;
+            } else {
+                clearInterval(timer);
+                countDisplay.textContent = "Go!";
+                sessionStorage.removeItem(sessionKey);
+                window.location.replace('/quiz-test/' + eventId + '/' + roundNumber + '/');
+            }
+        }, 1000);
+    }
+
+    // --- Update Bubbles ---
+    function updateBubbles(candidatesList) {
+        const now = Date.now();
+        if (now - lastBubbleUpdate < BUBBLE_UPDATE_THROTTLE) {
+            return;
+        }
+        lastBubbleUpdate = now;
+
+        log('updateBubbles called with candidates:', candidatesList);
+        
+        const serverNames = candidatesList.map(c => c.name);
+        const existingNames = bubbles.map(b => b.name);
+        
+        log('Server names:', serverNames);
+        log('Existing bubble names:', existingNames);
+        
+        // Add new bubbles
+        serverNames.forEach(name => {
+            if (name === currentCandidateName || existingNames.includes(name)) {
+                return;
+            }
+            log('Creating new bubble for:', name);
+            const newBubble = createBubble(name);
+            if (newBubble) {
+                bubbles.push(newBubble);
+            }
+        });
+
+        // Remove bubbles for left candidates
+        bubbles = bubbles.filter(bubble => {
+            const stillWaiting = serverNames.includes(bubble.name) || bubble.name === "You";
+            if (!stillWaiting) {
+                log('Removing bubble for:', bubble.name);
+                bubble.el.remove();
+                return false;
+            }
+            return true;
+        });
+
+        const count = Math.max(0, candidatesList.length - 1);
+        cachedElements.countNum.textContent = count;
+        log('Updated bubbles count:', bubbles.length);
+    }
+
+    // --- API Calls (Optimized) ---
+    function loadWaitingMembers() {
+        if (isRedirecting) return;
+        fetch('/api/get-candidates/' + eventId + '/' + roundNumber + '/')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.success && Array.isArray(data.candidates)) {
+                    updateBubbles(data.candidates);
+                }
+            })
+            .catch(err => log('Error loading waiting members:', err.message));
+    }
+
+    function updateCandidateActivity() {
+        if (!candidateEntryId || candidateEntryId === "null") return;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        fetch('/api/update-candidate-active/' + candidateEntryId + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+        }).catch(err => log('Heartbeat failed:', err.message));
+    }
+
+    // --- User Activity Detection (Optimized with Debounce) ---
+    let lastActivityTime = Date.now();
+    let activityTimeout = null;
+    
+    function detectUserActivity() {
+        const now = Date.now();
+        if (now - lastActivityTime > 8000) {
+            lastActivityTime = now;
+            clearTimeout(activityTimeout);
+            updateCandidateActivity();
+        }
+    }
+    
+    // Add activity listeners with passive flag
+    ['mousemove', 'keypress', 'click', 'touchstart'].forEach(event => {
+        document.addEventListener(event, detectUserActivity, { passive: true });
+    });
+
+    // --- Status Checks ---
+    function checkStatus() {
+        if (isRedirecting) return;
+
+        // Check Round Start
+        fetch('/api/check-round-started/' + eventId + '/' + roundNumber + '/')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.started === true) {
+                    log('Round started!');
+                    triggerStartSequence();
+                }
+            })
+            .catch(err => log('Error checking round start:', err.message));
+
+        // Check Hosting Status
+        fetch('/api/check-hosting-status/' + eventId + '/' + roundNumber + '/')
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data && data.is_hosting === false && data.is_started === false) {
+                    log('Host ended round');
+                    isRedirecting = true;
+                    cachedElements.errorOverlay.style.display = 'flex';
+                    sessionStorage.removeItem(sessionKey);
+                    setTimeout(() => window.location.replace('/login/candidate/'), 3000);
+                }
+            })
+            .catch(err => log('Error checking hosting status:', err.message));
+    }
+
+    // --- Exit Handler ---
+    function exitWaiting() {
+        if (confirm('Leave the waiting room?')) {
+            isRedirecting = true;
+            if (candidateEntryId && candidateEntryId !== "null") {
+                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
+            }
+            sessionStorage.removeItem(sessionKey);
+            window.location.replace('/login/candidate/');
+        }
+    }
+
+    // --- Cleanup Function ---
+    function cleanup() {
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+        }
+        if (memberCheckInterval) {
+            clearInterval(memberCheckInterval);
+        }
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+        }
+        
+        // Remove event listeners
+        ['mousemove', 'keypress', 'click', 'touchstart'].forEach(event => {
+            document.removeEventListener(event, detectUserActivity);
+        });
+    }
+
+    // --- Initialization ---
+    function initializeWaitingRoom() {
+        log('initializeWaitingRoom() called');
+        
+        cacheElements();
+        
+        if (!cachedElements.bubbleContainer) {
+            console.error('bubble-container element not found!');
+            return;
+        }
+        
+        // Create initial bubble for current user
+        if (currentCandidateName) { 
+            const userBubble = createBubble("You", true);
+            if (userBubble) {
+                bubbles.push(userBubble);
+            }
+        }
+        
+        createStars();
+        animateBubbles();
+        
+        // Initialize and start polling
+        (async () => {
+            if (isFirstVisit) {
+                await initializeWaitingStatus();
+            }
+            
+            // API Polling
+            updateCandidateActivity();
+            loadWaitingMembers();
+            checkStatus();
+            
+            statusCheckInterval = setInterval(checkStatus, 1000);
+            memberCheckInterval = setInterval(loadWaitingMembers, 3000);
+            heartbeatInterval = setInterval(updateCandidateActivity, 10000);
+        })();
+    }
+
+    // Ensure DOM is loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeWaitingRoom);
+    } else {
+        initializeWaitingRoom();
+    }
+
+    // --- Unload Handling ---
+    window.addEventListener('beforeunload', () => {
+        cleanup();
+        if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+            navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
+        }
+        sessionStorage.removeItem(sessionKey);
+    });
+
+    // Handle visibility change
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
+            }
+        }
+    });
+</script>
+
+<!-- Watermark -->
+<style>
+    .watermark {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        font-size: 11px;
+        color: #FFFFFF;
+        opacity: 0.85;
+        text-align: right;
+        pointer-events: none;
+        z-index: 9999;
+        font-family: var(--font-sans);
+        font-weight: 500;
+        will-change: auto;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7), -1px -1px 2px rgba(0, 0, 0, 0.2);
+    }
+</style>
+<div class="watermark">
+    <div>Developed by Gokul S</div>
+    <div>MCA 1st year SIMS</div>
+</div>
+
+<!-- Performance: Preload critical resources -->
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://fonts.gstatic.com">
+
+{% endblock %}

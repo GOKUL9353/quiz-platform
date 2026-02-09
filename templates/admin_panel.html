@@ -1,0 +1,755 @@
+<!-- START OF FILE templates/admin_panel.html -->
+
+{% extends "base.html" %}
+
+{% block title %}Admin Console | Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+
+<div class="admin-wrapper">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <div class="logo-icon">Q</div>
+                <div class="logo-text">
+                    <h1>ADMIN<span class="highlight">CONSOLE</span></h1>
+                    <p>Quiz Management</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-label">Main Menu</span>
+                <a href="#" class="nav-item active">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    Participants
+                </a>
+                <a href="#" class="nav-item">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Analytics
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'admin_logout' %}" class="logout-link">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign Out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+        
+        <!-- Top Header -->
+        <header class="content-header">
+            <div class="header-titles">
+                <h2 class="page-title">Event Overview</h2>
+                <p class="page-subtitle">Manage your quiz sessions and rounds</p>
+            </div>
+            <div class="header-tools">
+                <button onclick="openModal()" class="btn btn-primary">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Event
+                </button>
+            </div>
+        </header>
+
+        <!-- Alerts -->
+        {% if messages %}
+        <div class="alert-section">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    <div class="alert-icon">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Content Grid -->
+        <div class="content-body">
+            {% if events %}
+                <div class="grid-container">
+                    {% for event in events %}
+                    <div class="event-card">
+                        <div class="event-card-header">
+                            <div class="date-badge">
+                                <span class="day">{{ event.date|date:"d" }}</span>
+                                <span class="month">{{ event.date|date:"M" }}</span>
+                            </div>
+                            <div class="card-actions">
+                                <form method="POST" action="{% url 'delete_event' %}" onsubmit="return confirm('Are you sure you want to delete {{ event.name }}?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="event_id" value="{{ event.id }}">
+                                    <button type="submit" class="btn-icon danger" title="Delete Event">
+                                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="event-card-body">
+                            <h3 class="event-title">{{ event.name }}</h3>
+                            <div class="meta-row">
+                                <span class="meta-tag">
+                                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    {{ event.date|date:"Y" }}
+                                </span>
+                                <span class="meta-tag">
+                                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    {{ event.number_of_rounds }} Rounds
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="event-card-footer">
+                            <p class="footer-label">Configure Rounds</p>
+                            <div class="rounds-grid">
+                                {% for round_num in event.get_rounds %}
+                                <a href="{% url 'round_details' event.id round_num %}" class="round-btn">
+                                    Round {{ round_num }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-illustration">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <h3>No Events Scheduled</h3>
+                    <p>Get started by creating your first quiz event.</p>
+                    <button onclick="openModal()" class="btn btn-primary mt-4">Create New Event</button>
+                </div>
+            {% endif %}
+        </div>
+
+        <footer class="main-footer">
+            <p>&copy; 2026 Quiz Platform System. All rights reserved.</p>
+        </footer>
+    </main>
+</div>
+
+<!-- Modal -->
+<div id="createModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>New Event</h3>
+            <button onclick="closeModal()" class="close-modal-btn">&times;</button>
+        </div>
+        
+        <form method="POST" action="{% url 'add_event' %}">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label>Event Name</label>
+                <input type="text" name="event_name" class="form-control" placeholder="Ex: National Science Quiz 2026" required>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label>Event Date</label>
+                    <input type="date" name="event_date" class="form-control" required>
+                </div>
+
+                <div class="form-group half">
+                    <label>Total Rounds</label>
+                    <input type="number" name="number_of_rounds" class="form-control" min="1" max="10" value="1" required>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" onclick="closeModal()" class="btn btn-text">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create Event</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* --- CSS VARIABLES --- */
+    :root {
+        --primary-900: #022c22;
+        --primary-800: #064e3b; 
+        --primary-600: #059669; 
+        --primary-100: #d1fae5;
+        
+        --neutral-900: #111827;
+        --neutral-600: #4b5563;
+        --neutral-400: #9ca3af;
+        --neutral-200: #e5e7eb;
+        --neutral-50: #f9fafb;
+        --white: #ffffff;
+
+        --danger: #dc2626;
+
+        --font-heading: 'Manrope', sans-serif;
+        --font-body: 'Inter', sans-serif;
+        --font-logo: 'Cinzel', serif;
+
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --radius: 8px;
+        --sidebar-width: 280px;
+    }
+
+    /* GLOBAL RESET - Fixes the white border issue */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100%;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    *, *:before, *:after { box-sizing: inherit; }
+
+    body {
+        font-family: var(--font-body);
+        background-color: var(--neutral-50);
+        color: var(--neutral-900);
+        line-height: 1.5;
+        overflow-x: hidden;
+    }
+
+    /* --- SIDEBAR (FIXED LEFT) --- */
+    .sidebar {
+        width: var(--sidebar-width);
+        background-color: var(--primary-800);
+        color: var(--white); /* Ensure base color is white */
+        display: flex;
+        flex-direction: column;
+        
+        /* Positioning Fix */
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        z-index: 100;
+    }
+
+    .sidebar-header {
+        padding: 32px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logo-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .logo-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--white);
+        color: var(--primary-800);
+        font-family: var(--font-logo);
+        font-weight: 700;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+    }
+
+    /* TEXT VISIBILITY FIX */
+    .logo-text h1 {
+        font-family: var(--font-heading);
+        font-size: 1.1rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        line-height: 1;
+        color: var(--white) !important; /* Force White */
+    }
+
+    .logo-text p {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.7) !important; /* Force Light Grey */
+        margin-top: 4px;
+    }
+
+    .sidebar-nav {
+        padding: 24px 16px;
+        flex: 1;
+    }
+
+    .nav-label {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.4);
+        margin-bottom: 12px;
+        padding-left: 12px;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+    }
+
+    /* SIDEBAR LINK COLOR FIX */
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        color: rgba(255,255,255,0.8) !important; /* Force visible color */
+        text-decoration: none;
+        border-radius: var(--radius);
+        transition: all 0.2s;
+        font-weight: 500;
+        margin-bottom: 4px;
+    }
+
+    .nav-item:hover, .nav-item.active {
+        background: rgba(255,255,255,0.1);
+        color: var(--white) !important;
+    }
+
+    .sidebar-footer {
+        padding: 24px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .logout-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: rgba(255,255,255,0.7) !important; /* Force visible color */
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: 0.2s;
+    }
+
+    .logout-link:hover { color: #fca5a5 !important; }
+
+    /* --- MAIN CONTENT --- */
+    .main-content {
+        margin-left: var(--sidebar-width);
+        width: calc(100% - var(--sidebar-width));
+        flex: 1;
+        padding: 40px;
+        min-height: 100vh;
+        background-color: var(--neutral-50);
+    }
+
+    .content-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 40px;
+    }
+
+    .page-title {
+        font-family: var(--font-heading);
+        font-size: 2rem;
+        color: var(--neutral-900);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin: 0;
+    }
+
+    .page-subtitle {
+        color: var(--neutral-600);
+        margin-top: 4px;
+    }
+
+    /* --- BUTTONS --- */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background-color: var(--primary-800);
+        color: var(--white);
+        box-shadow: 0 2px 4px rgba(6, 78, 59, 0.2);
+    }
+
+    .btn-primary:hover {
+        background-color: var(--primary-900);
+        transform: translateY(-1px);
+    }
+
+    .btn-text {
+        background: transparent;
+        color: var(--neutral-600);
+    }
+
+    .btn-text:hover { background: var(--neutral-200); }
+
+    .btn-icon {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 6px;
+        color: var(--neutral-400);
+        transition: 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-icon:hover {
+        background: var(--neutral-200);
+        color: var(--neutral-900);
+    }
+
+    .btn-icon.danger:hover {
+        background: #fee2e2;
+        color: var(--danger);
+    }
+
+    /* --- ALERTS --- */
+    .alert-section { margin-bottom: 30px; }
+    
+    .alert {
+        padding: 16px;
+        border-radius: var(--radius);
+        background: var(--white);
+        border-left: 4px solid var(--primary-600);
+        box-shadow: var(--shadow-sm);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--neutral-900);
+        font-weight: 500;
+    }
+    
+    .alert-icon { color: var(--primary-600); display: flex; }
+
+    /* --- CARDS --- */
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+    }
+
+    .event-card {
+        background: var(--white);
+        border: 1px solid var(--neutral-200);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .event-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--primary-800);
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .event-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-md);
+        border-color: var(--primary-100);
+    }
+
+    .event-card:hover::before { opacity: 1; }
+
+    .event-card-header {
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding-bottom: 0;
+    }
+
+    .date-badge {
+        background: var(--neutral-50);
+        border: 1px solid var(--neutral-200);
+        padding: 8px 12px;
+        border-radius: 8px;
+        text-align: center;
+        min-width: 60px;
+    }
+
+    .date-badge .day {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--primary-800);
+        line-height: 1;
+    }
+
+    .date-badge .month {
+        display: block;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--neutral-600);
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .event-card-body { padding: 20px; flex: 1; }
+
+    .event-title {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin: 0 0 12px 0;
+        line-height: 1.3;
+    }
+
+    .meta-row { display: flex; gap: 16px; }
+
+    .meta-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: var(--neutral-600);
+        background: var(--neutral-50);
+        padding: 4px 10px;
+        border-radius: 20px;
+        border: 1px solid transparent;
+    }
+
+    .event-card-footer {
+        padding: 20px;
+        background: var(--neutral-50);
+        border-top: 1px solid var(--neutral-200);
+    }
+
+    .footer-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--neutral-400);
+        font-weight: 700;
+        margin: 0 0 10px 0;
+        letter-spacing: 0.05em;
+    }
+
+    .rounds-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .round-btn {
+        background: var(--white);
+        border: 1px solid var(--neutral-200);
+        color: var(--neutral-600);
+        font-size: 0.8rem;
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: 0.2s;
+    }
+
+    .round-btn:hover {
+        border-color: var(--primary-600);
+        color: var(--primary-800);
+        background: var(--primary-100);
+    }
+
+    /* --- EMPTY STATE --- */
+    .empty-state {
+        text-align: center;
+        padding: 80px 20px;
+        background: var(--white);
+        border-radius: 12px;
+        border: 1px dashed var(--neutral-200);
+        color: var(--neutral-600);
+    }
+
+    .empty-illustration {
+        width: 80px;
+        height: 80px;
+        background: var(--neutral-50);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        color: var(--neutral-400);
+    }
+    
+    .empty-state h3 {
+        color: var(--neutral-900);
+        margin: 0 0 8px 0;
+        font-family: var(--font-heading);
+    }
+    
+    .mt-4 { margin-top: 16px; }
+
+    /* --- MODAL --- */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(2px);
+    }
+
+    .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+
+    .modal-box {
+        background: var(--white);
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--neutral-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--neutral-50);
+    }
+
+    .modal-header h3 {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        color: var(--neutral-900);
+        margin: 0;
+    }
+
+    .close-modal-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        color: var(--neutral-400);
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .modal-box form { padding: 24px; }
+    .form-group { margin-bottom: 20px; }
+    .form-row { display: flex; gap: 16px; }
+    .form-group.half { flex: 1; }
+
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--neutral-900);
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--neutral-200);
+        border-radius: 6px;
+        font-family: var(--font-body);
+        font-size: 0.95rem;
+        color: var(--neutral-900);
+        transition: 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--primary-600);
+        box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding-top: 10px;
+    }
+
+    .main-footer {
+        text-align: center;
+        margin-top: auto;
+        padding-top: 40px;
+        color: var(--neutral-400);
+        font-size: 0.8rem;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 1024px) {
+        .sidebar { width: 80px; }
+        .logo-text, .nav-label, .nav-item span, .logout-link span { display: none; }
+        .sidebar-header { padding: 20px; justify-content: center; }
+        .nav-item { justify-content: center; }
+        .main-content { margin-left: 80px; width: calc(100% - 80px); }
+    }
+
+    @media (max-width: 768px) {
+        .sidebar { display: none; }
+        .main-content { margin-left: 0; width: 100%; padding: 20px; }
+        .header-tools { position: fixed; bottom: 20px; right: 20px; z-index: 90; }
+        .btn-primary { box-shadow: 0 4px 12px rgba(6,78,59,0.3); border-radius: 50px; padding: 12px 24px; }
+    }
+</style>
+
+<script>
+    function openModal() {
+        document.getElementById('createModal').classList.add('active');
+        const dateInput = document.querySelector('input[type="date"]');
+        if(dateInput) dateInput.min = new Date().toISOString().split('T')[0];
+    }
+
+    function closeModal() {
+        document.getElementById('createModal').classList.remove('active');
+    }
+
+    document.getElementById('createModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeModal();
+    });
+</script>
+
+{% endblock %}

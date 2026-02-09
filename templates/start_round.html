@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round Command Center - Quiz Platform</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <style>
+        :root {
+            /* Professional Palette */
+            --primary: #2563EB;
+            --primary-dark: #1D4ED8;
+            --primary-light: #EFF6FF;
+            
+            --success: #10B981;
+            --success-bg: #D1FAE5;
+            --success-text: #065F46;
+            
+            --warning: #F59E0B;
+            --warning-bg: #FEF3C7;
+            --warning-text: #92400E;
+            
+            --danger: #EF4444;
+            --danger-bg: #FEE2E2;
+            --danger-text: #991B1B;
+
+            --bg-body: #F3F4F6;
+            --bg-surface: #FFFFFF;
+            
+            --text-main: #111827;
+            --text-secondary: #6B7280;
+            --text-tertiary: #9CA3AF;
+            
+            --border: #E5E7EB;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* --- Header --- */
+        .navbar {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border);
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: -0.025em;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-body);
+            color: var(--text-main);
+            border-color: var(--text-tertiary);
+        }
+
+        /* --- Main Dashboard Layout --- */
+        .dashboard-container {
+            flex: 1;
+            padding: 24px 32px;
+            display: grid;
+            grid-template-columns: 1fr 380px; /* Split: Main content vs Sidebar */
+            grid-template-rows: auto 1fr;
+            gap: 24px;
+            max-width: 100%;
+            height: calc(100vh - 70px);
+        }
+
+        /* --- Top Stats Row (Spans full width) --- */
+        .stats-grid {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .stat-value.code {
+            font-family: 'Monaco', 'Courier New', monospace;
+            color: var(--primary);
+            letter-spacing: 1px;
+        }
+
+        /* --- Candidates Panel (Left) --- */
+        .candidates-panel {
+            grid-column: 1 / 2;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: 100%; /* Fill remaining height */
+        }
+
+        .panel-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #FAFAFA;
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badge-count {
+            background: var(--primary);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .table-container {
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #FAFAFA;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 24px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #F9FAFB; }
+
+        .avatar-cell {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .candidate-name { font-weight: 500; color: var(--text-main); }
+
+        /* --- Control Panel (Right) --- */
+        .control-panel {
+            grid-column: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .control-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .status-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .big-code-display {
+            background: var(--bg-body);
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .code-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .access-code-hero {
+            font-family: 'Monaco', monospace;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-main);
+            letter-spacing: 4px;
+        }
+
+        .access-code-hero.locked { color: var(--text-tertiary); text-decoration: line-through; filter: blur(6px); }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .btn-start {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.4);
+        }
+        .btn-start:hover { background: var(--primary-dark); transform: translateY(-1px); }
+        .btn-start:active { transform: translateY(0); }
+
+        .btn-end {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.4);
+        }
+        .btn-end:hover { background: #DC2626; transform: translateY(-1px); }
+
+        /* --- Status Badges --- */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 99px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .pill-submitted { background: var(--success-bg); color: var(--success-text); }
+        .pill-active { background: var(--primary-light); color: var(--primary-dark); }
+        .pill-waiting { background: var(--warning-bg); color: var(--warning-text); }
+        .pill-left { background: var(--danger-bg); color: var(--danger-text); }
+        
+        .round-status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .rs-active { background: var(--success-bg); color: var(--success-text); }
+        .rs-inactive { background: var(--bg-body); color: var(--text-tertiary); border: 1px solid var(--border); }
+
+        .empty-state {
+            padding: 48px;
+            text-align: center;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* --- Alerts --- */
+        .alert-box {
+            padding: 16px 32px;
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .alert-success { background: var(--success-bg); color: var(--success-text); border-bottom: 1px solid #A7F3D0; }
+        .alert-error { background: var(--danger-bg); color: var(--danger-text); border-bottom: 1px solid #FECACA; }
+
+        /* --- Sort Button --- */
+        .sort-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .sort-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+        .sort-button:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                height: auto;
+                overflow: visible;
+            }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .candidates-panel { height: 500px; }
+        }
+
+        @media (max-width: 640px) {
+            .navbar { padding: 0 16px; }
+            .dashboard-container { padding: 16px; }
+            .stats-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <nav class="navbar">
+        <div class="brand-section">
+            <a href="{% url 'admin_panel' %}" class="back-btn">
+                <span class="material-icons-outlined">arrow_back</span>
+                <span>Back</span>
+            </a>
+            <div style="width: 1px; height: 24px; background: var(--border); margin: 0 8px;"></div>
+            <span class="page-title">Round Setup</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 14px;">
+            <span class="material-icons-outlined">event</span>
+            <strong>{{ event.name }}</strong>
+        </div>
+    </nav>
+
+    <!-- Django Messages (Full Width) -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert-box {% if 'success' in message.tags %}alert-success{% elif 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">
+                <span class="material-icons-outlined">info</span>
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Main Dashboard Grid -->
+    <main class="dashboard-container">
+        
+        <!-- Top Stats Row -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="material-icons-outlined" style="font-size: 16px;">tag</span>
+                    Round Number
+                </div>
+                <div class="stat-value">#{{ round.round_number }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="material-icons-outlined" style="font-size: 16px;">timer</span>
+                    Duration
+                </div>
+                <div class="stat-value">{{ round.duration_minutes }} <span style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">min</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="material-icons-outlined" style="font-size: 16px;">people</span>
+                    Participants
+                </div>
+                <div class="stat-value" id="participants-count">{{ candidates|length }}</div>
+            </div>
+            <div class="stat-card" style="border-color: var(--primary-light); background: #F8FAFC;">
+                <div class="stat-header">
+                    <span class="material-icons-outlined" style="font-size: 16px; color: var(--primary);">vpn_key</span>
+                    Current Status
+                </div>
+                <div class="stat-value" style="font-size: 18px;">
+                    {% if round.is_started %}
+                        <span style="color: var(--success);">In Progress</span>
+                    {% else %}
+                        <span style="color: var(--text-secondary);">Waiting to Start</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Column: Candidates Table (Takes up most space) -->
+        <div class="candidates-panel">
+            <div class="panel-header">
+                <span class="panel-title">
+                    <span class="material-icons-outlined">groups</span>
+                    Live Participant Monitor
+                    <span class="badge-count">{{ candidates|length }}</span>
+                </span>
+                
+                <!-- Legend for clarity -->
+                <div style="display: flex; gap: 16px; align-items: center;">
+                    <button id="sortBtn" class="sort-button" onclick="sortParticipantsByScore()" title="Sort by score (higher to lower)">
+                        <span class="material-icons-outlined" style="font-size: 18px;">sort</span>
+                        Sort by Score
+                    </button>
+                    <div style="display: flex; gap: 12px; font-size: 12px; color: var(--text-secondary);">
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 8px; height: 8px; background: var(--success); border-radius: 50%;"></span> Submitted
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 8px; height: 8px; background: var(--primary); border-radius: 50%;"></span> Active
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">Avatar</th>
+                            <th>Candidate Name</th>
+                            <th>Current Status</th>
+                            <th>Score</th>
+                            <th>Time Taken</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for candidate in candidates_data %}
+                            <tr>
+                                <td>
+                                    <div class="avatar-cell">
+                                        <div class="avatar">{{ candidate.name|first|upper }}</div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="candidate-name">{{ candidate.name }}</div>
+                                </td>
+                                <td>
+                                    {% if candidate.status == "Submitted" %}
+                                        <span class="status-pill pill-submitted">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">check</span>
+                                            Submitted
+                                        </span>
+                                    {% elif candidate.status == "Giving Test" %}
+                                        <span class="status-pill pill-active">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>
+                                            In Test
+                                        </span>
+                                    {% elif candidate.status == "Waiting" %}
+                                        <span class="status-pill pill-waiting">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">schedule</span>
+                                            Waiting
+                                        </span>
+                                    {% elif candidate.status == "Left" %}
+                                        <span class="status-pill pill-left">
+                                            <span class="material-icons-outlined" style="font-size: 14px;">close</span>
+                                            Left
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if candidate.is_submitted %}
+                                        <div style="font-weight: 600; color: #1e8e3e;">{{ candidate.score }}/{{ candidate.total_questions }}</div>
+                                    {% else %}
+                                        <div style="color: var(--text-tertiary);">-</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if candidate.time_taken %}
+                                        <div style="font-size: 12px; color: var(--text-secondary);">{{ candidate.time_taken }}</div>
+                                    {% else %}
+                                        <div style="color: var(--text-tertiary);">-</div>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div id="emptyState" class="empty-state" {% if candidates_data %}style="display: none;"{% endif %}>
+                    <span class="material-icons-outlined" style="font-size: 48px; color: var(--border);">person_off</span>
+                    <p>No candidates have joined the lobby yet.</p>
+                    <p style="font-size: 12px;">Share the access code below to let them in.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Control Panel -->
+        <div class="control-panel">
+            
+            <!-- Access Code Card -->
+            <div class="control-card">
+                <span class="status-header">Access Control</span>
+                
+                <div class="big-code-display">
+                    <div class="code-label">Room Access Code</div>
+                    {% if round.access_code %}
+                        <div class="access-code-hero {% if round.is_started %}locked{% endif %}">
+                            {{ round.access_code }}
+                        </div>
+                        {% if round.is_started %}
+                            <div style="font-size: 11px; color: var(--danger); margin-top: 8px; font-weight: 600;">
+                                <span class="material-icons-outlined" style="font-size: 12px; vertical-align: -2px;">lock</span>
+                                TEST IN PROGRESS - Code Blurred
+                            </div>
+                        {% elif round.is_hosting %}
+                            <div style="font-size: 11px; color: var(--success); margin-top: 8px; font-weight: 600;">
+                                <span class="material-icons-outlined" style="font-size: 12px; vertical-align: -2px;">lock_open</span>
+                                ENTRY OPEN
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div style="color: var(--text-tertiary); font-size: 14px; padding: 30px 20px; text-align: center;">
+                            <span class="material-icons-outlined" style="font-size: 40px; display: block; margin-bottom: 8px; opacity: 0.5;">hide_source</span>
+                            No access code yet
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                    {% if round.is_started %}
+                        Code is blurred while test is in progress. Share with students if they join late!
+                        Code is blurred while test is in progress. Share with students if they join late!
+                    {% elif round.is_hosting %}
+                        Share this code with candidates. Once you click "Start Test", entry will be locked.
+                    {% else %}
+                        Click "Start Hosting" to generate a fresh access code.
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="control-card" style="flex: 1;">
+                <span class="status-header">Round Controls</span>
+
+                {% if not round.is_hosting and not round.is_started %}
+                    <div class="round-status-badge rs-inactive">
+                        <span class="material-icons-outlined">pause_circle</span>
+                        <span>Hosting Not Started</span>
+                    </div>
+                    
+                    <button id="startHostingBtn" class="btn btn-start" style="margin-top: 24px;">
+                        <span class="material-icons-outlined">cloud_upload</span>
+                        Start Hosting
+                    </button>
+                    <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
+                        Click to start accepting students and generate access code.
+                    </p>
+
+                {% elif round.is_hosting and not round.is_started %}
+                    <div class="round-status-badge rs-active">
+                        <span class="material-icons-outlined">cloud_sync</span>
+                        <span>Hosting Active</span>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px;">
+                        <button id="startTestBtn" class="btn" style="background: var(--success); color: white; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
+                            <span class="material-icons-outlined">play_arrow</span>
+                            Start Test
+                        </button>
+                        <button id="endHostingBtn" class="btn btn-end">
+                            <span class="material-icons-outlined">cloud_off</span>
+                            End Hosting
+                        </button>
+                    </div>
+                    <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
+                        Click "Start Test" to begin, or "End Hosting" to stop accepting students.
+                    </p>
+
+                {% elif round.is_started %}
+                    <div class="round-status-badge rs-active">
+                        <span class="material-icons-outlined">timelapse</span>
+                        <span>Test In Progress</span>
+                    </div>
+
+                    <button id="endHostingBtn" class="btn btn-end" style="margin-top: 24px;">
+                        <span class="material-icons-outlined">cloud_off</span>
+                        End Hosting
+                    </button>
+                    <p style="margin-top: 12px; font-size: 12px; color: var(--text-tertiary); text-align: center;">
+                        Test is running. Click to stop hosting when all students are done.
+                    </p>
+                {% endif %}
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Sort participants by score (higher to lower), then by time taken (lower to higher)
+        function sortParticipantsByScore() {
+            const table = document.querySelector('table tbody');
+            if (!table) return;
+            
+            const rows = Array.from(table.querySelectorAll('tr'));
+            
+            rows.sort((a, b) => {
+                // Extract score from the score column (4th column, index 3)
+                const scoreA = a.querySelectorAll('td')[3];
+                const scoreB = b.querySelectorAll('td')[3];
+                
+                // Extract time from time taken column (5th column, index 4)
+                const timeA = a.querySelectorAll('td')[4];
+                const timeB = b.querySelectorAll('td')[4];
+                
+                // Parse the score - format is "X/Y" or "-"
+                const scoreAText = scoreA ? scoreA.textContent.trim() : '-';
+                const scoreBText = scoreB ? scoreB.textContent.trim() : '-';
+                
+                let valueA = 0;
+                let valueB = 0;
+                
+                if (scoreAText !== '-' && scoreAText) {
+                    const parts = scoreAText.split('/');
+                    valueA = parseInt(parts[0]) || 0;
+                }
+                
+                if (scoreBText !== '-' && scoreBText) {
+                    const parts = scoreBText.split('/');
+                    valueB = parseInt(parts[0]) || 0;
+                }
+                
+                // First sort by score (higher to lower)
+                if (valueB !== valueA) {
+                    return valueB - valueA;
+                }
+                
+                // If scores are equal, sort by time taken (lower to higher)
+                const timeAText = timeA ? timeA.textContent.trim() : '';
+                const timeBText = timeB ? timeB.textContent.trim() : '';
+                
+                // Convert time strings "Xm Ys" to total seconds for comparison
+                const parseTime = (timeStr) => {
+                    if (!timeStr) return Infinity; // No time taken = not submitted, should be last
+                    const minsMatch = timeStr.match(/(\d+)m/);
+                    const secsMatch = timeStr.match(/(\d+)s/);
+                    const mins = minsMatch ? parseInt(minsMatch[1]) : 0;
+                    const secs = secsMatch ? parseInt(secsMatch[1]) : 0;
+                    return mins * 60 + secs;
+                };
+                
+                const timeASeconds = parseTime(timeAText);
+                const timeBSeconds = parseTime(timeBText);
+                
+                return timeASeconds - timeBSeconds;
+            });
+            
+            // Re-insert sorted rows
+            rows.forEach(row => table.appendChild(row));
+            
+            // Visual feedback on button
+            const btn = document.getElementById('sortBtn');
+            if (btn) {
+                btn.style.opacity = '0.7';
+                setTimeout(() => {
+                    btn.style.opacity = '1';
+                }, 200);
+            }
+        }
+
+        // Handle Start Hosting button
+        document.getElementById('startHostingBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_start_hosting" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error starting hosting: ' + error);
+            }
+        });
+
+        // Handle Start Test button
+        document.getElementById('startTestBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_start_test" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error starting test: ' + error);
+            }
+        });
+
+        // Handle End Hosting button
+        document.getElementById('endHostingBtn')?.addEventListener('click', async () => {
+            try {
+                const response = await fetch('{% url "api_end_hosting" event.id round.round_number %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error ending hosting: ' + error);
+            }
+        });
+
+        // Initial fetch + Polling to update candidates list (every 3 seconds)
+        function pollCandidates() {
+            fetch('{% url "api_get_candidates" event.id round.round_number %}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.candidates) {
+                        updateCandidatesTable(data.candidates);
+                    }
+                })
+                .catch(error => console.error('Polling error:', error));
+        }
+        
+        // Call immediately
+        pollCandidates();
+        
+        // Then poll every 3 seconds
+        setInterval(pollCandidates, 3000);
+
+        function updateCandidatesTable(candidates) {
+            const tbody = document.querySelector('table tbody');
+            if (!tbody) {
+                return;
+            }
+
+            // Clear existing rows
+            tbody.innerHTML = '';
+
+            // Add new rows
+            candidates.forEach(candidate => {
+                const row = document.createElement('tr');
+                const initials = candidate.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                
+                let statusBadge = '';
+                if (candidate.is_submitted) statusBadge = '<span class="status-pill pill-submitted"><span class="material-icons-outlined" style="font-size: 14px;">check</span>Submitted</span>';
+                else if (candidate.status === 'Giving Test') statusBadge = '<span class="status-pill pill-active"><span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>In Test</span>';
+                else if (candidate.status === 'Waiting') statusBadge = '<span class="status-pill pill-waiting"><span class="material-icons-outlined" style="font-size: 14px;">schedule</span>Waiting</span>';
+                else if (candidate.status === 'Left') statusBadge = '<span class="status-pill pill-left"><span class="material-icons-outlined" style="font-size: 14px;">close</span>Left</span>';
+
+                const scoreDisplay = candidate.is_submitted 
+                    ? `<div style="font-weight: 600; color: #1e8e3e;">${candidate.score}/${candidate.total_questions}</div>`
+                    : '<div style="color: var(--text-tertiary);">-</div>';
+
+                const timeDisplay = candidate.time_taken 
+                    ? `<div style="font-size: 12px; color: var(--text-secondary);">${candidate.time_taken}</div>`
+                    : '<div style="color: var(--text-tertiary);">-</div>';
+
+                row.innerHTML = `
+                    <td>
+                        <div class="avatar-cell">
+                            <div class="avatar">${initials}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="candidate-name">${candidate.name}</div>
+                    </td>
+                    <td>
+                        ${statusBadge}
+                    </td>
+                    <td>
+                        ${scoreDisplay}
+                    </td>
+                    <td>
+                        ${timeDisplay}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            // Update the badge count in the Live Participant Monitor
+            const badgeCount = document.querySelector('.badge-count');
+            if (badgeCount) {
+                badgeCount.textContent = candidates.length;
+            }
+
+            // Also update the Participants stat card
+            const participantsCount = document.getElementById('participants-count');
+            if (participantsCount) {
+                participantsCount.textContent = candidates.length;
+            }
+
+            // Show/hide empty state
+            const emptyState = document.getElementById('emptyState');
+            if (emptyState) {
+                emptyState.style.display = candidates.length === 0 ? 'flex' : 'none';
+            }
+        }
+    </script>
+    <!-- Watermark -->
+    <footer style="position: fixed; bottom: 20px; right: 20px; font-size: 11px; color: #FFFFFF; text-align: right; pointer-events: none; z-index: 1000; opacity: 0.85; font-weight: 500; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7), -1px -1px 2px rgba(0, 0, 0, 0.2);">
+        <div>Developed by Gokul S</div>
+        <div>MCA 1st year SIMS</div>
+    </footer>
+
+</body>
+</html>

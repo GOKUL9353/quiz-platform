@@ -1,0 +1,413 @@
+<!-- START OF FILE text/html -->
+
+{% extends 'base.html' %}
+
+{% block title %}Join Quiz - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Fonts: Cinzel (Premium), Montserrat (Clean), Inter (Body) -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cinzel:wght@500;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Main Wrapper -->
+<div class="split-layout">
+    
+    <!-- Left Pane: Branding -->
+    <div class="brand-pane">
+        <div class="brand-content">
+            <h1 class="brand-title">QUIZ<br>PLATFORM</h1>
+            <div class="brand-line"></div>
+            <p class="brand-tagline">Assessment & Evaluation Suite</p>
+        </div>
+    </div>
+
+    <!-- Right Pane: Join Form -->
+    <div class="login-pane">
+        <div class="auth-content">
+            
+            <!-- Header (Animated) -->
+            <div class="card-header fade-in delay-1">
+                <div class="brand-logo glass-logo">
+                    <svg class="logo-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                </div>
+                <h2 class="form-title">Join Quiz</h2>
+                <p class="header-subtitle">Enter your details to begin</p>
+            </div>
+
+            <!-- Alert Container -->
+            <div id="alert-container" class="fade-in delay-2"></div>
+            {% if messages %}
+                {% for message in messages %}
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            displayMessage("{{ message }}", "{{ message.tags }}");
+                        });
+                    </script>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Form -->
+            <form method="POST" id="login-form">
+                {% csrf_token %}
+
+                <!-- Input 1 (Animated) -->
+                <div class="form-group fade-in delay-2">
+                    <label class="input-label" for="candidate_name">Full Name</label>
+                    <div class="input-wrapper">
+                        <input type="text" id="candidate_name" name="candidate_name" class="form-input glass-input" placeholder="e.g. John Doe" required autofocus>
+                        <div class="input-icon">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input 2 (Animated) -->
+                <div class="form-group fade-in delay-3">
+                    <label class="input-label" for="access_code">Access Code</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="access_code" name="access_code" class="form-input glass-input" placeholder="Enter code" required>
+                        <div class="input-icon">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Button (Animated) -->
+                <button type="submit" class="btn-submit glass-btn fade-in delay-4">
+                    <span>Join Room now!</span>
+                </button>
+            </form>
+
+            <!-- Footer (Animated) -->
+            <div class="form-footer fade-in delay-5">
+                <a href="{% url 'login_choice' %}" class="link-back">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Selection
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- VARIABLES --- */
+    :root {
+        --brand-primary: #064e3b; /* Deep Emerald Green */
+        --brand-accent: #34d399;  /* Bright Mint */
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --text-white: #ffffff;
+        
+        --font-main: 'Montserrat', sans-serif;
+        --font-display: 'Cinzel', serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* --- LAYOUT STRUCTURE --- */
+    .split-layout {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: row;
+        
+        /* SOLID GREEN BACKGROUND */
+        background-color: var(--brand-primary) !important;
+        background-image: radial-gradient(circle at 70% 50%, rgba(6, 95, 70, 1), #064e3b 60%);
+        
+        z-index: 1000;
+        overflow: hidden;
+        font-family: var(--font-main);
+    }
+
+    /* --- LEFT PANE (BRANDING) --- */
+    .brand-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        position: relative;
+    }
+
+    .brand-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+    }
+
+    .brand-title {
+        font-family: var(--font-display);
+        font-size: 4.5rem;
+        font-weight: 700;
+        color: var(--text-white);
+        letter-spacing: 0.12em;
+        line-height: 1.1;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .brand-line {
+        width: 80px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--brand-accent), transparent);
+        margin: 30px auto;
+        border-radius: 2px;
+        opacity: 0.9;
+    }
+
+    .brand-tagline {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.9rem;
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    /* --- RIGHT PANE (FORM) --- */
+    .login-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .auth-content {
+        width: 100%;
+        max-width: 440px; /* Constrain width but no visible container */
+        padding: 20px;
+        /* No background or border here - cleaner look */
+    }
+
+    /* --- ANIMATION KEYFRAMES --- */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in {
+        opacity: 0; /* Start hidden */
+        animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* Animation Delays */
+    .delay-1 { animation-delay: 0.1s; } /* Header */
+    .delay-2 { animation-delay: 0.25s; } /* Name Input */
+    .delay-3 { animation-delay: 0.4s; } /* Code Input */
+    .delay-4 { animation-delay: 0.55s; } /* Button */
+    .delay-5 { animation-delay: 0.7s; } /* Footer */
+
+
+    /* --- HEADER --- */
+    .card-header { text-align: center; margin-bottom: 40px; }
+
+    .glass-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        color: #fff;
+        border-radius: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .logo-icon { width: 36px; height: 36px; }
+
+    .form-title {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 1rem;
+    }
+
+    /* --- FORM INPUTS --- */
+    .form-group { margin-bottom: 24px; }
+
+    .input-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 10px;
+        display: block;
+        letter-spacing: 0.02em;
+        margin-left: 4px;
+    }
+
+    .input-wrapper { position: relative; }
+
+    .glass-input {
+        width: 100%;
+        height: 56px;
+        padding: 0 40px 0 20px;
+        /* Slight background to make it visible against the green */
+        background: rgba(255, 255, 255, 0.07); 
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        color: #fff;
+        font-size: 1rem;
+        font-family: var(--font-main);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+    }
+
+    .glass-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+    .glass-input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .input-icon {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+        transition: color 0.3s;
+    }
+
+    .glass-input:focus + .input-icon { color: var(--brand-accent); }
+
+    /* --- BUTTON --- */
+    .glass-btn {
+        width: 70%;
+        height: 56px;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--brand-accent), #059669);
+        color: white;
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 16px;
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        text-transform: uppercase;
+        font-family: var(--font-main);
+        margin-left: 55px;
+    }
+
+    .glass-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.3);
+        filter: brightness(1.1);
+    }
+    
+    .glass-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* --- FOOTER --- */
+    .form-footer { margin-top: 40px; text-align: center; }
+
+    .link-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .link-back:hover { 
+        color: #fff; 
+        transform: translateX(-4px);
+    }
+
+    /* --- ALERTS --- */
+    .alert-message {
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 24px;
+        font-size: 0.9rem;
+        display: block;
+        text-align: left;
+        backdrop-filter: blur(5px);
+    }
+
+    .alert-error {
+        background: rgba(239, 68, 68, 0.2);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+    
+    .alert-success {
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #6ee7b7;
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 900px) {
+        .split-layout { flex-direction: column; overflow-y: auto; height: 100vh; }
+        .brand-pane { flex: 0 0 auto; padding: 50px 20px 30px; }
+        .brand-title { font-size: 3rem; }
+        .login-pane { align-items: flex-start; padding-top: 10px; padding-bottom: 40px; }
+    }
+</style>
+
+<script>
+    function displayMessage(message, type = 'error') {
+        const container = document.getElementById('alert-container');
+        const isError = type.includes('error') || (!type.includes('success'));
+        const bgClass = isError ? 'alert-error' : 'alert-success';
+
+        const alertHTML = `
+            <div class="alert-message ${bgClass} fade-in">
+                <span>${message}</span>
+            </div>
+        `;
+        container.innerHTML = alertHTML;
+    }
+
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        const btn = document.querySelector('.btn-submit');
+        
+        const name = document.getElementById('candidate_name').value.trim();
+        const code = document.getElementById('access_code').value.trim();
+
+        if (!name || !code) {
+            e.preventDefault();
+            displayMessage('Please fill in all fields.', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span>Processing...</span>';
+    });
+</script>
+{% endblock %}

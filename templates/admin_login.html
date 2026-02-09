@@ -1,0 +1,357 @@
+<!-- START OF FILE text/html -->
+
+{% extends "base.html" %}
+
+{% block title %}Admin Login - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Fonts: Cinzel (Premium), Montserrat (Clean), Inter (Body) -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cinzel:wght@500;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Main Wrapper -->
+<div class="split-layout">
+    
+    <!-- Left Pane: Branding -->
+    <div class="brand-pane">
+        <div class="brand-content">
+            <h1 class="brand-title">QUIZ<br>PLATFORM</h1>
+            <div class="brand-line"></div>
+            <p class="brand-tagline">Assessment & Evaluation Suite</p>
+        </div>
+    </div>
+
+    <!-- Right Pane: Admin Login Form -->
+    <div class="login-pane">
+        <div class="auth-content">
+            
+            <!-- Header (Animated) -->
+            <div class="card-header fade-in delay-1">
+                <div class="brand-logo glass-logo">
+                    <!-- Security/Lock Icon -->
+                    <svg class="logo-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h2 class="form-title">Host a Event</h2>
+                <p class="header-subtitle">Enter master password to access dashboard</p>
+            </div>
+
+            <!-- Alert Container (Animated) -->
+            <div id="alert-container" class="fade-in delay-2">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert-message alert-{{ message.tags }}">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Form -->
+            <form method="POST">
+                {% csrf_token %}
+                
+                <!-- Password Input (Animated) -->
+                <div class="form-group fade-in delay-2">
+                    <label class="input-label" for="password">Administrator Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" class="form-input glass-input" placeholder="• • • • • • • • •" required autofocus>
+                        <div class="input-icon">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button (Animated) -->
+                <button type="submit" class="btn-submit glass-btn fade-in delay-3">
+                    <span>Access Dashboard</span>
+                </button>
+            </form>
+
+            <!-- Footer (Animated) -->
+            <div class="form-footer fade-in delay-4">
+                <a href="{% url 'login_choice' %}" class="link-back">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to Selection
+                </a>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- VARIABLES --- */
+    :root {
+        --brand-primary: #064e3b; /* Deep Emerald Green */
+        --brand-accent: #34d399;  /* Bright Mint */
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --text-white: #ffffff;
+        
+        --font-main: 'Montserrat', sans-serif;
+        --font-display: 'Cinzel', serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* --- LAYOUT STRUCTURE --- */
+    .split-layout {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: row;
+        
+        /* SOLID GREEN BACKGROUND */
+        background-color: var(--brand-primary) !important;
+        background-image: radial-gradient(circle at 70% 50%, rgba(6, 95, 70, 1), #064e3b 60%);
+        
+        z-index: 1000;
+        overflow: hidden;
+        font-family: var(--font-main);
+    }
+
+    /* --- LEFT PANE (BRANDING) --- */
+    .brand-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        position: relative;
+    }
+
+    .brand-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+    }
+
+    .brand-title {
+        font-family: var(--font-display);
+        font-size: 4.5rem;
+        font-weight: 700;
+        color: var(--text-white);
+        letter-spacing: 0.12em;
+        line-height: 1.1;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .brand-line {
+        width: 80px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--brand-accent), transparent);
+        margin: 30px auto;
+        border-radius: 2px;
+        opacity: 0.9;
+    }
+
+    .brand-tagline {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.9rem;
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    /* --- RIGHT PANE (FORM) --- */
+    .login-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .auth-content {
+        width: 100%;
+        max-width: 440px;
+        padding: 20px;
+    }
+
+    /* --- ANIMATION KEYFRAMES --- */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in {
+        opacity: 0; /* Start hidden */
+        animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    .delay-1 { animation-delay: 0.1s; }
+    .delay-2 { animation-delay: 0.25s; }
+    .delay-3 { animation-delay: 0.4s; }
+    .delay-4 { animation-delay: 0.55s; }
+
+    /* --- HEADER --- */
+    .card-header { text-align: center; margin-bottom: 40px; }
+
+    .glass-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        color: #fff;
+        border-radius: 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .logo-icon { width: 36px; height: 36px; }
+
+    .form-title {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        color: #fff;
+        margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 1rem;
+    }
+
+    /* --- FORM INPUTS --- */
+    .form-group { margin-bottom: 24px; }
+
+    .input-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 10px;
+        display: block;
+        letter-spacing: 0.02em;
+        margin-left: 4px;
+    }
+
+    .input-wrapper { position: relative; }
+
+    .glass-input {
+        width: 100%;
+        height: 56px;
+        padding: 0 40px 0 20px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 14px;
+        color: #fff;
+        font-size: 1rem;
+        font-family: var(--font-main);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(5px);
+    }
+
+    .glass-input::placeholder { color: rgba(255, 255, 255, 0.4); }
+
+    .glass-input:focus {
+        outline: none;
+        background: rgba(255, 255, 255, 0.12);
+        border-color: var(--brand-accent);
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .input-icon {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: rgba(255, 255, 255, 0.3);
+        pointer-events: none;
+        transition: color 0.3s;
+    }
+
+    .glass-input:focus + .input-icon { color: var(--brand-accent); }
+
+    /* --- BUTTON --- */
+    .glass-btn {
+        width: 70%;
+        height: 56px;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--brand-accent), #059669);
+        color: white;
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 16px;
+        box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        text-transform: uppercase;
+        font-family: var(--font-main);
+        margin-left: 55px;
+    }
+
+    .glass-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.3);
+        filter: brightness(1.1);
+    }
+
+    /* --- FOOTER --- */
+    .form-footer { margin-top: 40px; text-align: center; }
+
+    .link-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.5);
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
+
+    .link-back:hover { 
+        color: #fff; 
+        transform: translateX(-4px);
+    }
+
+    /* --- ALERTS --- */
+    .alert-message {
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 24px;
+        font-size: 0.9rem;
+        display: block;
+        text-align: left;
+        backdrop-filter: blur(5px);
+        background: rgba(239, 68, 68, 0.2); /* Default Error Red */
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+    }
+    
+    /* Optional: If you use different message tags like 'success' */
+    .alert-success {
+        background: rgba(16, 185, 129, 0.2);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #6ee7b7;
+    }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 900px) {
+        .split-layout { flex-direction: column; overflow-y: auto; height: 100vh; }
+        .brand-pane { flex: 0 0 auto; padding: 50px 20px 30px; }
+        .brand-title { font-size: 3rem; }
+        .login-pane { align-items: flex-start; padding-top: 10px; padding-bottom: 40px; }
+    }
+</style>
+{% endblock %}

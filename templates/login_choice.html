@@ -1,0 +1,331 @@
+<!-- START OF FILE text/html -->
+
+{% extends "base.html" %}
+
+{% block title %}Login - Quiz Platform{% endblock %}
+
+{% block content %}
+<!-- Google Fonts: Added 'Montserrat' for the clean premium button text -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Cinzel:wght@500;700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- Main Wrapper -->
+<div class="split-layout">
+    
+    <!-- Left Pane: Branding -->
+    <div class="brand-pane">
+        <div class="brand-content">
+            <h1 class="brand-title">QUIZ<br>PLATFORM</h1>
+            <div class="brand-line"></div>
+            <p class="brand-tagline">Assessment & Evaluation Suite</p>
+        </div>
+    </div>
+
+    <!-- Right Pane: Login Selection -->
+    <div class="login-pane">
+        <div class="auth-content">
+            
+            <!-- Header -->
+            <div class="card-header">
+                <!-- Logo with Glass Effect -->
+                <div class="brand-logo glass-logo">
+                    <svg class="logo-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                </div>
+                <h2 class="form-title">Welcome</h2>
+                <p class="header-subtitle">Select your portal to continue</p>
+            </div>
+
+            <!-- Selection Grid -->
+            <div class="role-grid">
+                
+                <!-- Candidate Option (Liquid Glass) -->
+                <a href="{% url 'candidate_login' %}" class="role-card glass-card">
+                    <div class="icon-wrapper glass-icon">
+                        <svg class="role-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                    </div>
+                    <div class="role-content">
+                        <h3 class="role-title">Candidate Login</h3>
+                        <p class="role-desc">Access assessments and view results.</p>
+                    </div>
+                    <div class="role-arrow">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Admin Option (Liquid Glass) -->
+                <a href="{% url 'admin_login' %}" class="role-card glass-card">
+                    <div class="icon-wrapper glass-icon">
+                        <svg class="role-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                    <div class="role-content">
+                        <h3 class="role-title">Host a Event!</h3>
+                        <p class="role-desc">Manage events and rounds.</p>
+                    </div>
+                    <div class="role-arrow">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </a>
+
+            </div>
+
+            <div class="card-footer">
+                <p>&copy; 2026 Quiz Platform Developed by gokul - 9353617108</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* --- VARIABLES --- */
+    :root {
+        --brand-primary: #064e3b; /* Deep Emerald Green */
+        --brand-accent: #34d399;  /* Bright Mint */
+        --glass-bg: rgba(255, 255, 255, 0.08);
+        --glass-border: rgba(255, 255, 255, 0.2);
+        --glass-shine: rgba(255, 255, 255, 0.4);
+        --text-white: #ffffff;
+        
+        --font-main: 'Montserrat', sans-serif; /* Clean Premium Font */
+        --font-display: 'Cinzel', serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* --- LAYOUT STRUCTURE --- */
+    .split-layout {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: row;
+        
+        /* SOLID GREEN BACKGROUND */
+        background-color: var(--brand-primary) !important;
+        /* Subtle radial gradient for depth */
+        background-image: radial-gradient(circle at 70% 50%, rgba(6, 95, 70, 1), #064e3b 60%);
+        
+        z-index: 1000;
+        overflow: hidden;
+        font-family: var(--font-main);
+    }
+
+    /* --- LEFT PANE (BRANDING) --- */
+    .brand-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        position: relative;
+    }
+
+    .brand-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+    }
+
+    .brand-title {
+        font-family: var(--font-display);
+        font-size: 4.5rem;
+        font-weight: 700;
+        color: var(--text-white);
+        letter-spacing: 0.12em;
+        line-height: 1.1;
+        text-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    .brand-line {
+        width: 80px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--brand-accent), transparent);
+        margin: 30px auto;
+        border-radius: 2px;
+        opacity: 0.9;
+    }
+
+    .brand-tagline {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.9rem;
+        letter-spacing: 0.35em;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    /* --- RIGHT PANE (LOGIN) --- */
+    .login-pane {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .auth-content {
+        width: 100%;
+        max-width: 480px;
+        padding: 30px;
+    }
+
+    /* --- HEADER & LOGO --- */
+    .card-header {
+        text-align: center;
+        margin-bottom: 50px;
+    }
+
+    .glass-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
+        /* Glass Style */
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        
+        color: #fff;
+        border-radius: 27px;
+        margin-bottom: 24px;
+    }
+
+    .logo-icon { width: 36px; height: 36px; }
+
+    .form-title {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 500;
+        color: #c2e4a2;
+        margin-bottom: 10px;
+        letter-spacing: 0.02em;
+    }
+
+    .header-subtitle {
+        font-family: var(--font-main);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.95rem;
+        font-weight: 400;
+    }
+
+    /* --- LIQUID GLASS CARDS --- */
+    .role-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .glass-card {
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        position: relative;
+        padding: 24px;
+        border-radius: 25px;
+        
+        /* Glassmorphism Background */
+        background: var(--glass-bg);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        
+        /* Liquid Border Effect (Light top/left, Dark bottom/right) */
+        border: 1px solid transparent; /* Fallback */
+        border-top: 1px solid var(--glass-shine);
+        border-left: 1px solid var(--glass-shine);
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+        overflow: hidden;
+    }
+
+
+
+    .icon-wrapper {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        margin-right: 20px;
+        
+        /* Inner Glass for Icon */
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #fff;
+        transition: background 0.3s ease;
+    }
+
+    
+    
+    .role-icon { width: 28px; height: 28px; }
+    
+    .role-content { flex-grow: 1; padding-right: 12px; }
+
+    /* New Premium Font Styling */
+    .role-title {
+        font-family: var(--font-main);
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 6px;
+        letter-spacing: 0.02em;
+    }
+
+    .role-desc {
+        font-family: var(--font-main);
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+        font-weight: 400;
+    }
+
+    .role-arrow {
+        color: rgba(255, 255, 255, 0.5);
+        transition: all 0.3s ease;
+    }
+
+    .glass-card:hover .role-arrow {
+        color: #fff;
+        transform: translateX(5px);
+        filter: drop-shadow(0 0 5px rgba(255,255,255,0.8));
+    }
+
+    /* --- FOOTER --- */
+    .card-footer {
+        margin-top: 60px;
+        text-align: center;
+    }
+
+    .card-footer p {
+        font-family: var(--font-main);
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.3);
+        letter-spacing: 0.05em;
+    }
+
+    /* --- RESPONSIVE DESIGN --- */
+    @media (max-width: 900px) {
+        .split-layout { flex-direction: column; overflow-y: auto; height: 100vh; }
+        .brand-pane { flex: 0 0 auto; padding: 60px 20px 30px; }
+        .brand-title { font-size: 3rem; }
+        .login-pane { align-items: flex-start; padding-top: 10px; padding-bottom: 40px; }
+    }
+</style>
+{% endblock %}

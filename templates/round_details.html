@@ -1,0 +1,803 @@
+<!-- FILE: templates/round_details.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Round Editor | {{ event.name }}</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <style>
+        /* --- CSS VARIABLES (Unified with Admin Panel) --- */
+        :root {
+            /* Colors */
+            --primary-900: #022c22;
+            --primary-800: #064e3b; /* Deep Forest Green */
+            --primary-600: #059669; /* Action Green */
+            --primary-100: #d1fae5;
+            
+            --neutral-900: #111827; /* Headings */
+            --neutral-600: #4b5563; /* Body Text */
+            --neutral-400: #9ca3af;
+            --neutral-200: #e5e7eb; /* Borders */
+            --neutral-50: #f9fafb;  /* Background */
+            --white: #ffffff;
+
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --success: #10b981;
+
+            /* Typography */
+            --font-heading: 'Manrope', sans-serif;
+            --font-body: 'Inter', sans-serif;
+            --font-logo: 'Cinzel', serif;
+
+            /* Dimensions */
+            --sidebar-width: 280px;
+            --radius: 8px;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* --- GLOBAL RESET --- */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            font-family: var(--font-body);
+            background-color: var(--neutral-50);
+            color: var(--neutral-900);
+        }
+
+        *, *:before, *:after { box-sizing: inherit; }
+
+        /* --- LAYOUT WRAPPER --- */
+        .admin-wrapper {
+            display: flex;
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        /* --- SIDEBAR (Copied from Admin Panel) --- */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-800);
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 32px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--white);
+            color: var(--primary-800);
+            font-family: var(--font-logo);
+            font-weight: 700;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+        }
+
+        .logo-text h1 {
+            font-family: var(--font-heading);
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1;
+            color: var(--white);
+            margin: 0;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 4px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .sidebar-nav {
+            padding: 24px 16px;
+            flex: 1;
+        }
+
+        .nav-label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 12px;
+            padding-left: 12px;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.1);
+            color: var(--white);
+        }
+
+        .nav-item.active {
+            background: rgba(255,255,255,0.15);
+            color: var(--white);
+            border-left: 3px solid var(--primary-100);
+        }
+
+        .sidebar-footer {
+            padding: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logout-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+        .logout-link:hover { color: #fca5a5; }
+
+        /* --- MAIN CONTENT AREA --- */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- HEADER --- */
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--neutral-200);
+        }
+
+        .header-left { display: flex; align-items: center; gap: 16px; }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--white);
+            border: 1px solid var(--neutral-200);
+            color: var(--neutral-600);
+            transition: 0.2s;
+            text-decoration: none;
+        }
+        .back-btn:hover { border-color: var(--primary-600); color: var(--primary-800); }
+
+        .page-context h2 {
+            font-family: var(--font-heading);
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--neutral-900);
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .page-context p {
+            font-size: 0.85rem;
+            color: var(--neutral-600);
+            margin: 0;
+        }
+
+        .status-badge {
+            background: var(--primary-100);
+            color: var(--primary-800);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        /* --- GRID LAYOUT --- */
+        .editor-grid {
+            display: grid;
+            grid-template-columns: 1fr 380px; /* Fluid Left, Fixed Right */
+            gap: 24px;
+            align-items: start;
+        }
+
+        /* --- CARDS --- */
+        .card {
+            background: var(--white);
+            border: 1px solid var(--neutral-200);
+            border-radius: 12px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--neutral-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--white);
+        }
+
+        .card-title {
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--neutral-900);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-body { padding: 24px; }
+
+        /* --- FORMS --- */
+        .form-group { margin-bottom: 20px; }
+        
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--neutral-900);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--neutral-50);
+            border: 1px solid var(--neutral-200);
+            border-radius: 8px;
+            font-family: var(--font-body);
+            font-size: 0.95rem;
+            color: var(--neutral-900);
+            transition: 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            background: var(--white);
+            border-color: var(--primary-600);
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+
+        textarea.form-input { min-height: 120px; resize: vertical; }
+
+        /* --- OPTIONS --- */
+        .options-list { display: flex; flex-direction: column; gap: 12px; }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .opt-id {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--white);
+            border: 1px solid var(--neutral-200);
+            border-radius: 6px;
+            font-weight: 700;
+            color: var(--neutral-600);
+            flex-shrink: 0;
+        }
+
+        /* Styled Radio */
+        .radio-wrapper {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .radio-wrapper input { opacity: 0; position: absolute; }
+        
+        .radio-circle {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--neutral-200);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .radio-wrapper input:checked + .radio-circle {
+            border-color: var(--primary-600);
+            background: var(--primary-600);
+        }
+
+        .radio-circle::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .radio-wrapper input:checked + .radio-circle::after { display: block; }
+        .radio-wrapper:hover .radio-circle { border-color: var(--primary-600); }
+
+        /* --- BUTTONS --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-800);
+            color: var(--white);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-900);
+            transform: translateY(-1px);
+        }
+
+        .btn-launch {
+            width: 100%;
+            background: var(--primary-600);
+            color: white;
+            padding: 14px;
+            font-size: 1rem;
+            box-shadow: 0 4px 6px rgba(5, 150, 105, 0.2);
+        }
+        .btn-launch:hover {
+            background: var(--primary-800);
+            box-shadow: 0 6px 12px rgba(5, 150, 105, 0.3);
+        }
+
+        .btn-update {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--neutral-200);
+            color: var(--neutral-600);
+        }
+        .btn-update:hover {
+            border-color: var(--neutral-400);
+            color: var(--neutral-900);
+            background: var(--white);
+        }
+
+        /* --- QUESTION LIST --- */
+        .q-stack { display: flex; flex-direction: column; gap: 16px; }
+
+        .q-item {
+            background: var(--white);
+            border: 1px solid var(--neutral-200);
+            border-radius: 8px;
+            padding: 20px;
+            position: relative;
+            transition: 0.2s;
+        }
+
+        .q-item:hover {
+            border-color: var(--primary-600);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .q-top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .q-badge {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--neutral-400);
+            text-transform: uppercase;
+        }
+
+        .q-text {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--neutral-900);
+            margin-bottom: 12px;
+            padding-right: 30px;
+        }
+
+        .q-opt-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .q-opt {
+            padding: 6px 10px;
+            background: var(--neutral-50);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--neutral-600);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .q-opt.correct {
+            background: var(--primary-100);
+            color: var(--primary-800);
+            font-weight: 600;
+        }
+
+        .btn-trash {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--neutral-400);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        
+        .q-item:hover .btn-trash { opacity: 1; }
+        .btn-trash:hover { background: var(--danger-bg); color: var(--danger); }
+
+        /* --- ALERTS --- */
+        .alert {
+            padding: 14px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        .alert-success { background: var(--primary-100); color: var(--primary-800); }
+        .alert-error { background: var(--danger-bg); color: var(--danger); }
+
+        /* --- RESPONSIVE --- */
+        @media (max-width: 1024px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; width: 100%; padding: 20px; }
+            .editor-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="admin-wrapper">
+
+    <!-- SIDEBAR (Identical to Admin Panel) -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <div class="logo-icon">Q</div>
+                <div class="logo-text">
+                    <h1>ADMIN<span class="highlight">CONSOLE</span></h1>
+                    <p>Quiz Management</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">
+                <span class="nav-label">Main Menu</span>
+                <a href="{% url 'admin_panel' %}" class="nav-item active">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    Dashboard
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="material-symbols-rounded">groups</span>
+                    Participants
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="material-symbols-rounded">analytics</span>
+                    Analytics
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'admin_logout' %}" class="logout-link">
+                <span class="material-symbols-rounded">logout</span>
+                <span>Sign Out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        
+        <!-- Page Header -->
+        <header class="content-header">
+            <div class="header-left">
+                <a href="{% url 'admin_panel' %}" class="back-btn" title="Back to Dashboard">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                </a>
+                <div class="page-context">
+                    <h2>{{ event.name }}</h2>
+                    <p>Round {{ round_number }} Configuration</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="status-badge">Edit Mode</span>
+            </div>
+        </header>
+
+        <!-- Flash Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if 'error' in message.tags %}alert-error{% else %}alert-success{% endif %}">
+                    <span class="material-symbols-rounded">
+                        {% if 'error' in message.tags %}error{% else %}check_circle{% endif %}
+                    </span>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Fluid Grid Layout -->
+        <div class="editor-grid">
+            
+            <!-- LEFT COLUMN: Question Management -->
+            <div class="left-panel">
+                
+                <!-- Add Question Form -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color: var(--primary-600);">add_circle</span>
+                            Create Question
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'add_question' event.id round_number %}">
+                            {% csrf_token %}
+                            
+                            <div class="form-group">
+                                <label class="form-label">Question Text</label>
+                                <textarea name="question_text" class="form-input" placeholder="Type the question clearly..." required></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Options (Select the correct answer)</label>
+                                <div class="options-list">
+                                    <!-- Option A -->
+                                    <div class="option-item">
+                                        <div class="opt-id">A</div>
+                                        <input type="text" name="option_1" class="form-input" placeholder="Option A" required>
+                                        <label class="radio-wrapper" title="Correct Answer">
+                                            <input type="radio" name="correct_option" value="1" required>
+                                            <span class="radio-circle"></span>
+                                        </label>
+                                    </div>
+                                    
+                                    <!-- Option B -->
+                                    <div class="option-item">
+                                        <div class="opt-id">B</div>
+                                        <input type="text" name="option_2" class="form-input" placeholder="Option B" required>
+                                        <label class="radio-wrapper" title="Correct Answer">
+                                            <input type="radio" name="correct_option" value="2" required>
+                                            <span class="radio-circle"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Option C -->
+                                    <div class="option-item">
+                                        <div class="opt-id">C</div>
+                                        <input type="text" name="option_3" class="form-input" placeholder="Option C" required>
+                                        <label class="radio-wrapper" title="Correct Answer">
+                                            <input type="radio" name="correct_option" value="3" required>
+                                            <span class="radio-circle"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Option D -->
+                                    <div class="option-item">
+                                        <div class="opt-id">D</div>
+                                        <input type="text" name="option_4" class="form-input" placeholder="Option D" required>
+                                        <label class="radio-wrapper" title="Correct Answer">
+                                            <input type="radio" name="correct_option" value="4" required>
+                                            <span class="radio-circle"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-symbols-rounded">save</span>
+                                    Save Question
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Question List -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color: var(--primary-600);">list_alt</span>
+                            Question Bank
+                        </span>
+                        <span style="background: var(--neutral-50); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--neutral-600);">
+                            {{ round.questions.count }} Questions
+                        </span>
+                    </div>
+                    <div class="card-body" style="background: var(--neutral-50);">
+                        {% if round.questions.all %}
+                            <div class="q-stack">
+                                {% for question in round.questions.all %}
+                                <div class="q-item">
+                                    <div class="q-top">
+                                        <span class="q-badge">Q{{ forloop.counter }}</span>
+                                        <button class="btn-trash" onclick="deleteQuestion(event, {{ question.id }})">
+                                            <span class="material-symbols-rounded">delete</span>
+                                        </button>
+                                    </div>
+                                    <div class="q-text">{{ question.question_text }}</div>
+                                    <div class="q-opt-grid">
+                                        {% for option in question.options.all %}
+                                            <div class="q-opt {% if option.is_correct %}correct{% endif %}">
+                                                <span>{{ option.get_option_number_display }}.</span>
+                                                <span>{{ option.option_text }}</span>
+                                                {% if option.is_correct %}
+                                                    <span class="material-symbols-rounded" style="font-size: 16px; margin-left: auto;">check</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div style="text-align: center; padding: 40px; color: var(--neutral-400);">
+                                <span class="material-symbols-rounded" style="font-size: 48px; margin-bottom: 10px;">assignment_add</span>
+                                <p>No questions yet. Add one above.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Round Settings -->
+            <div class="right-panel">
+                
+                <!-- Settings Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color: var(--neutral-600);">settings</span>
+                            Configuration
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label class="form-label">Duration (Minutes)</label>
+                                <input type="number" name="duration_minutes" value="{{ round.duration_minutes }}" class="form-input" min="1" max="180">
+                            </div>
+                            <button type="submit" class="btn btn-update">Update Settings</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Launch Card -->
+                <div class="card" style="border: 1px solid var(--primary-600); background: linear-gradient(to bottom, #ffffff, #f0fdf4);">
+                    <div class="card-body" style="text-align: center;">
+                        <div style="width: 60px; height: 60px; background: var(--primary-100); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+                            <span class="material-symbols-rounded" style="color: var(--primary-800); font-size: 32px;">rocket_launch</span>
+                        </div>
+                        <h3 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; margin: 0 0 8px 0;">Ready to Start?</h3>
+                        <p style="font-size: 0.85rem; color: var(--neutral-600); margin-bottom: 24px;">
+                            Ensure all participants are ready before launching the round.
+                        </p>
+                        <a href="{% url 'start_round' event.id round.round_number %}" class="btn btn-launch">
+                            Host This Round
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+</div>
+
+<script>
+    async function deleteQuestion(evt, questionId) {
+        if (confirm('Delete this question permanently?')) {
+            try {
+                // Assuming standard Django setup for these vars
+                const eventId = "{{ event.id }}"; 
+                const roundNum = "{{ round_number }}";
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Note: Ensure your URL pattern matches this API call
+                const response = await fetch(`/api/delete-question/${eventId}/${roundNum}/${questionId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const card = evt.target.closest('.q-item');
+                    card.style.opacity = '0';
+                    setTimeout(() => location.reload(), 300);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
