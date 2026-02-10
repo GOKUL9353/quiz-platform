@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from .models import Event, Round, Question, QuestionOption, CandidateEntry
 from datetime import timedelta
 from django.utils import timezone
+from django.db.models import Count, Prefetch
 import json
 import logging
 import random
@@ -108,7 +109,7 @@ def waiting_for_round(request, event_id, round_number):
     """Display waiting page while admin starts the round"""
     try:
         event = Event.objects.get(id=event_id)
-        round_obj = Round.objects.get(event=event, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event=event, round_number=round_number)
         
         # Get candidate name and entry id from session
         candidate_name = request.session.get('candidate_name', 'Anonymous')
@@ -148,7 +149,12 @@ def admin_login(request):
 # Admin panel
 def admin_panel(request):
     """Display admin panel dashboard with events"""
-    events = Event.objects.all()
+    # Optimize query by prefetching related rounds and candidate entries
+    events = Event.objects.prefetch_related(
+        Prefetch('rounds', Round.objects.prefetch_related('questions'))
+    ).annotate(
+        total_rounds=Count('rounds')
+    ).all()
     context = {
         'events': events
     }
@@ -236,7 +242,7 @@ def add_question(request, event_id, round_number):
     if request.method == 'POST':
         try:
             event = Event.objects.get(id=event_id)
-            round_obj = Round.objects.get(event=event, round_number=round_number)
+            round_obj = Round.objects.select_related('event').get(event=event, round_number=round_number)
             
             question_text = request.POST.get('question_text')
             correct_option = int(request.POST.get('correct_option'))
@@ -274,7 +280,7 @@ def delete_question(request, event_id, round_number, question_id):
     
     try:
         event = Event.objects.get(id=event_id)
-        round_obj = Round.objects.get(event=event, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event=event, round_number=round_number)
         question = Question.objects.get(id=question_id, round=round_obj)
         
         # Delete the question (this will cascade delete associated options)
@@ -357,7 +363,8 @@ def verify_round_password(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-        traceback.print_exc()
+    except Exception as e:
+        logger.error(f"verify_round_password error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -386,7 +393,10 @@ def quiz_test(request, event_id, round_number):
         request.session.modified = True
         
         event = Event.objects.get(id=event_id)
-        round_obj = Round.objects.get(event=event, round_number=round_number)
+        # Optimize: prefetch questions with their options to avoid N+1 queries
+        round_obj = Round.objects.prefetch_related(
+            Prefetch('questions', Question.objects.prefetch_related('options'))
+        ).get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
         
         # Mark candidate as no longer waiting (they've started the quiz)
@@ -428,7 +438,10 @@ def submit_quiz(request):
 
         # Get event and round
         event = Event.objects.get(id=event_id)
-        round_obj = Round.objects.get(event=event, round_number=round_number)
+        # Optimize: prefetch questions with their options to avoid N+1 queries
+        round_obj = Round.objects.prefetch_related(
+            Prefetch('questions', Question.objects.prefetch_related('options'))
+        ).get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
 
         # Get candidate info
@@ -440,14 +453,29 @@ def submit_quiz(request):
         score = 0
         answered_count = 0
         answers_dict = {}
+        # Cache questions and options in memory to avoid repeated queries
+        questions_cache = {q.id: q for q in questions}
+        options_cache = {}
+        for q in questions:
+            options_cache[q.id] = {o.id: o for o in q.options.all()}
 
         for question_id_str, option_id_str in answers.items():
             try:
                 question_id = int(question_id_str.replace('question_', ''))
                 option_id = int(option_id_str)
 
-                question = Question.objects.get(id=question_id, round=round_obj)
-                option = QuestionOption.objects.get(id=option_id, question=question)
+                # Use cached data instead of querying database
+                if question_id not in questions_cache:
+                    logger.warning(f"Question {question_id} not found in round")
+                    continue
+                
+                question = questions_cache[question_id]
+                
+                if option_id not in options_cache.get(question_id, {}):
+                    logger.warning(f"Option {option_id} not found for question {question_id}")
+                    continue
+                
+                option = options_cache[question_id][option_id]
 
                 answers_dict[f'question_{question_id}'] = option_id
                 answered_count += 1
@@ -499,29 +527,22 @@ def submit_quiz(request):
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in request: {str(e)}")
         return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
-    except Exception as e:
-        logger.error(f"Unexpected error in submit_quiz: {str(e)}")
-        logger.error(traceback.format_exc())
-        return JsonResponse({'success': False, 'error': f'Server error: {str(e)}'}, status=500)
 
 
 @csrf_exempt
 def check_round_started(request, event_id, round_number):
     """API endpoint to check if admin has started the round"""
     try:
-        # Always get fresh data from database
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
-        is_started = round_obj.is_started
+        # Optimize: Only fetch the fields we need
+        is_started = Round.objects.filter(
+            event_id=event_id, 
+            round_number=round_number
+        ).values_list('is_started', flat=True).first()
+        
         logger.info(f"check_round_started - Event: {event_id}, Round: {round_number}, is_started: {is_started}")
         return JsonResponse({
-            'started': is_started
+            'started': is_started if is_started is not None else False
         })
-    except Round.DoesNotExist:
-        logger.warning(f"Round not found - Event: {event_id}, Round: {round_number}")
-        return JsonResponse({
-            'started': False,
-            'error': 'Round not found'
-        }, status=404)
     except Exception as e:
         logger.error(f"check_round_started error: {str(e)}")
         return JsonResponse({
@@ -585,14 +606,20 @@ def check_hosting_status(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
-        return JsonResponse({
-            'success': True,
-            'is_hosting': round_obj.is_hosting,
-            'is_started': round_obj.is_started
-        })
-    except Round.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
+        # Optimize: Only fetch the fields we need
+        status = Round.objects.filter(
+            event_id=event_id, 
+            round_number=round_number
+        ).values('is_hosting', 'is_started').first()
+        
+        if status:
+            return JsonResponse({
+                'success': True,
+                'is_hosting': status['is_hosting'],
+                'is_started': status['is_started']
+            })
+        else:
+            return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
     except Exception as e:
         logger.error(f"check_hosting_status error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
@@ -601,7 +628,8 @@ def check_hosting_status(request, event_id, round_number):
 def start_round(request, event_id, round_number):
     """Render the Start Round page with round details and candidates."""
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        # Optimize: use select_related for event to avoid N+1 queries
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         
         # Show ONLY candidates who have entered with the current round's access code
         all_candidates = CandidateEntry.objects.filter(
@@ -715,7 +743,7 @@ def api_start_hosting(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         
         # Always generate a FRESH access code when starting hosting
         round_obj.access_code = generate_access_code()
@@ -744,7 +772,7 @@ def api_end_hosting(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         round_obj.is_hosting = False
         round_obj.is_started = False
         round_obj.access_code = None  # Clear the access code
@@ -770,7 +798,7 @@ def api_start_test(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         round_obj.is_started = True
         round_obj.save()
         
@@ -792,13 +820,14 @@ def api_get_candidates(request, event_id, round_number):
         return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
     
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        # Optimize: use select_related for event to avoid N+1 queries
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         
         # Get all candidates for this round
         all_candidates = CandidateEntry.objects.filter(
             round=round_obj,
             access_code_used=round_obj.access_code
-        ).order_by('-is_submitted', 'entry_time')
+        ).order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
         
         current_time = timezone.now()
         threshold_90s = current_time - timedelta(seconds=90)
@@ -883,7 +912,7 @@ def api_get_candidates(request, event_id, round_number):
 def end_round(request, event_id, round_number):
     """End the round and redirect back to round details"""
     try:
-        round_obj = Round.objects.get(event_id=event_id, round_number=round_number)
+        round_obj = Round.objects.select_related('event').get(event_id=event_id, round_number=round_number)
         
         if request.method == 'POST':
             round_obj.is_started = False
