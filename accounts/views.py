@@ -552,29 +552,44 @@ def check_round_started(request, event_id, round_number):
 
 
 @csrf_exempt
+@csrf_exempt
 def update_candidate_active(request, candidate_entry_id):
     """API endpoint to update candidate's last_active timestamp"""
     try:
         candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
-        candidate_entry.last_active = timezone.now()
-        candidate_entry.save()
-        return JsonResponse({'success': True})
+        current_time = timezone.now()
+        candidate_entry.last_active = current_time
+        
+        # If round hasn't started yet and candidate was marked as not waiting, mark them as waiting again (they came back)
+        if candidate_entry.round and not candidate_entry.round.is_started and not candidate_entry.is_waiting and not candidate_entry.is_submitted:
+            candidate_entry.is_waiting = True
+            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-activated heartbeat, marked as waiting again")
+        
+        candidate_entry.save(update_fields=['last_active', 'is_waiting'])
+        return JsonResponse({'success': True, 'last_active': current_time.isoformat()})
     except CandidateEntry.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
     except Exception as e:
+        logger.error(f"update_candidate_active error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @csrf_exempt
 def exit_waiting(request, candidate_entry_id):
     """API endpoint to mark candidate as exited from waiting room"""
-    # Accept both GET and POST (sendBeacon uses POST)
+    # Accept both GET and POST (sendBeacon uses POST, beforeunload uses both)
     try:
         candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
-        candidate_entry.is_waiting = False
-        candidate_entry.save()
+        
+        # Only mark as not waiting if round hasn't started yet
+        if candidate_entry.round and not candidate_entry.round.is_started:
+            candidate_entry.is_waiting = False
+            candidate_entry.save(update_fields=['is_waiting'])
+            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) marked as exited from waiting room")
+        
         return JsonResponse({'success': True, 'message': 'Candidate marked as exited'})
     except CandidateEntry.DoesNotExist:
+        logger.warning(f"exit_waiting called for non-existent candidate ID: {candidate_entry_id}")
         return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
     except Exception as e:
         logger.error(f"exit_waiting error: {str(e)}")
@@ -586,13 +601,22 @@ def init_waiting(request, candidate_entry_id):
     """API endpoint to initialize/refresh candidate's waiting status on page load/refresh"""
     try:
         candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
-        # Ensure candidate is marked as waiting and update last_active
-        candidate_entry.is_waiting = True
-        candidate_entry.last_active = timezone.now()
-        candidate_entry.save()
-        logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-initialized waiting status")
+        current_time = timezone.now()
+        
+        # Only reset waiting status if round hasn't started yet
+        if candidate_entry.round and not candidate_entry.round.is_started and not candidate_entry.is_submitted:
+            candidate_entry.is_waiting = True
+            candidate_entry.last_active = current_time
+            candidate_entry.save(update_fields=['is_waiting', 'last_active'])
+            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-initialized waiting status")
+        else:
+            # Just update the heartbeat even if round has started
+            candidate_entry.last_active = current_time
+            candidate_entry.save(update_fields=['last_active'])
+        
         return JsonResponse({'success': True, 'message': 'Waiting status initialized'})
     except CandidateEntry.DoesNotExist:
+        logger.warning(f"init_waiting called for non-existent candidate ID: {candidate_entry_id}")
         return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
     except Exception as e:
         logger.error(f"init_waiting error: {str(e)}")
@@ -833,18 +857,33 @@ def api_get_candidates(request, event_id, round_number):
         threshold_90s = current_time - timedelta(seconds=90)
         threshold_30s = current_time - timedelta(seconds=30)
         threshold_45s = current_time - timedelta(seconds=45)  # For waiting room timeout
-        waiting_timeout = current_time - timedelta(seconds=60)  # 60 second timeout for waiting room
+        waiting_timeout = current_time - timedelta(seconds=45)  # Reduced from 60 to 45 seconds for faster detection
         
         candidates_data = []
         
         if round_obj.is_started:
             # After round starts: show only candidates actively giving test or submitted
-            actively_testing = all_candidates.filter(
+            # Filter out ghost candidates who never actually interacted
+            
+            # Submitted candidates (always show)
+            submitted = all_candidates.filter(is_submitted=True)
+            
+            # Actively testing candidates (must have recent activity AND have ever sent a heartbeat)
+            # Only show if they're actually testing and have been active in last 90 seconds
+            # Exclude ghost entries (those created but never sent a heartbeat - activity within 1 second of creation)
+            currently_active = []
+            for candidate in all_candidates.filter(
                 is_waiting=False,
                 is_submitted=False,
                 last_active__gte=threshold_90s
-            )
-            submitted = all_candidates.filter(is_submitted=True)
+            ):
+                # Skip if candidate never actually sent a heartbeat (entry_time == last_active)
+                time_diff = (candidate.last_active - candidate.entry_time).total_seconds()
+                if time_diff > 1:  # If more than 1 second has passed since creation, they sent a real update
+                    currently_active.append(candidate)
+            
+            actively_testing = currently_active
+            
             display_candidates = list(submitted) + list(actively_testing)
             
             for candidate in display_candidates:
@@ -871,32 +910,53 @@ def api_get_candidates(request, event_id, round_number):
                     'time_taken': time_display
                 })
         else:
-            # Before round starts (hosting): show only waiting candidates with active heartbeat
-            # Apply activity timeout - candidates must have sent a heartbeat within 60 seconds
-            display_candidates = all_candidates.filter(
-                is_waiting=True,
-                last_active__gte=waiting_timeout  # Only show candidates who sent heartbeat recently
-            )
+            # Before round starts (hosting): show all candidates who entered, with their status
+            # Display their current state: Waiting, Inactive, or Left
             
-            # Mark candidates as inactive if they haven't sent heartbeat in 60 seconds
+            # First, auto-mark candidates as inactive if they've timed out (no heartbeat for 45s)
             inactive_candidates = all_candidates.filter(
                 is_waiting=True,
                 last_active__lt=waiting_timeout
             )
             if inactive_candidates.exists():
-                inactive_candidates.update(is_waiting=False)  # Mark them as no longer waiting
-                logger.info(f"Marked {inactive_candidates.count()} candidates as inactive for Round {round_number}")
+                marked_count = inactive_candidates.update(is_waiting=False)  # Mark them as no longer waiting
+                logger.info(f"Auto-marked {marked_count} candidates as inactive (no heartbeat > 45s) for Round {round_number}")
             
-            for candidate in display_candidates:
+            # Get all candidates for display (both waiting and left)
+            # Waiting candidates with recent heartbeat
+            actively_waiting = all_candidates.filter(
+                is_waiting=True
+            ).order_by('entry_time')
+            
+            # Candidates who left the waiting room (is_waiting=False) but round hasn't started yet
+            left_candidates = all_candidates.filter(
+                is_waiting=False,
+                is_submitted=False
+            ).order_by('entry_time')
+            
+            # Combine: waiting candidates first (sorted by entry time), then left candidates
+            combined_candidates = list(actively_waiting) + list(left_candidates)
+            
+            for candidate in combined_candidates:
+                # Determine status based on current state
+                if candidate.is_waiting:
+                    if candidate.last_active >= waiting_timeout:
+                        status = "Waiting"
+                    else:
+                        status = "Inactive"  # Was waiting but timed out
+                else:
+                    status = "Left"  # Explicitly left or timed out and marked as left
+                
                 candidates_data.append({
                     'id': candidate.id,
                     'name': candidate.candidate_name,
                     'is_submitted': candidate.is_submitted,
-                    'status': 'Waiting',
+                    'status': status,
                     'score': 0,
                     'total_questions': 0,
                     'time_taken': ''
                 })
+        
         
         return JsonResponse({
             'success': True,

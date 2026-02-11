@@ -444,8 +444,20 @@
         sessionStorage.setItem(sessionKey, 'active');
         isFirstVisit = true;
     } else {
+        // Page refresh detected - mark as exited before redirecting
         isRedirecting = true;
-        window.location.replace('/login/candidate/');
+        sessionStorage.removeItem(sessionKey);
+        
+        if (candidateEntryId && candidateEntryId !== "null") {
+            // Immediately exit waiting status before redirect
+            navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'page-refresh' }));
+            log('Page refreshed - sending exit beacon');
+        }
+        
+        // Small delay to ensure beacon is sent
+        setTimeout(() => {
+            window.location.replace('/login/candidate/');
+        }, 50);
     }
 
     // --- Cache DOM Elements ---
@@ -681,19 +693,91 @@
 
     // --- User Activity Detection (Optimized with Debounce) ---
     let lastActivityTime = Date.now();
+    let lastHeartbeatTime = 0;
     let activityTimeout = null;
+    let pageHidden = false;
+    let hasLeftTab = false;  // Track if candidate has switched away from tab
     
     function detectUserActivity() {
         const now = Date.now();
-        if (now - lastActivityTime > 8000) {
-            lastActivityTime = now;
-            clearTimeout(activityTimeout);
+        // Send heartbeat every 3 seconds if user is active, or every 5 seconds minimum
+        if (now - lastHeartbeatTime > 3000) {
+            lastHeartbeatTime = now;
             updateCandidateActivity();
         }
     }
     
-    // Add activity listeners with passive flag
-    ['mousemove', 'keypress', 'click', 'touchstart'].forEach(event => {
+    // Detect page visibility changes (tab switching)
+    document.addEventListener('visibilitychange', () => {
+        pageHidden = document.hidden;
+        
+        if (pageHidden) {
+            // Page is HIDDEN - candidate switched away
+            hasLeftTab = true;
+            log('🚨 Tab hidden: Candidate switched to another tab/window');
+            
+            if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+                // Mark as not waiting when they switch away (before round starts)
+                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'tab-hidden' }));
+                
+                // Update UI to indicate they left
+                const mainText = document.getElementById('main-status-text');
+                if (mainText) {
+                    mainText.textContent = "⚠️ Tab switched to another window";
+                    mainText.style.color = "#f97316";  // Orange warning color
+                }
+            }
+        } else {
+            // Page is VISIBLE AGAIN - candidate came back
+            if (hasLeftTab) {
+                log('✅ Tab visible again: Candidate returned to waiting room');
+                hasLeftTab = false;
+                
+                // Send immediate heartbeat to mark as active again
+                if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    fetch('/api/update-candidate-active/' + candidateEntryId + '/', {
+                        method: 'POST',
+                        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+                    }).catch(err => log('Heartbeat on tab return failed:', err.message));
+                    
+                    // Reset UI
+                    const mainText = document.getElementById('main-status-text');
+                    if (mainText) {
+                        mainText.textContent = "Waiting for Host";
+                        mainText.style.color = "#ffffff";
+                    }
+                }
+            }
+        }
+    }, { passive: true });
+    
+    // Handle page unload/close - must be reliable
+    function handlePageExit() {
+        if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            // Try to send synchronously if possible (deprecated but still works)
+            try {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/exit-waiting/' + candidateEntryId + '/', false); // synchronous
+                xhr.setRequestHeader('X-CSRFToken', csrfToken);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.send(JSON.stringify({ source: 'beforeunload' }));
+            } catch (e) {
+                // Fallback to sendBeacon
+                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'beforeunload' }));
+            }
+        }
+    }
+    
+    // Multiple exit handlers for maximum reliability
+    window.addEventListener('beforeunload', handlePageExit, { passive: false });
+    window.addEventListener('pagehide', handlePageExit, { passive: true });
+    window.addEventListener('unload', handlePageExit, { passive: true });
+    
+    // Add activity listeners with passive flag - more responsive
+    ['mousemove', 'keypress', 'click', 'touchstart', 'touchmove', 'scroll'].forEach(event => {
         document.addEventListener(event, detectUserActivity, { passive: true });
     });
 
@@ -753,11 +837,19 @@
         if (heartbeatInterval) {
             clearInterval(heartbeatInterval);
         }
+        if (activityTimeout) {
+            clearTimeout(activityTimeout);
+        }
         
-        // Remove event listeners
-        ['mousemove', 'keypress', 'click', 'touchstart'].forEach(event => {
-            document.removeEventListener(event, detectUserActivity);
+        // Remove all event listeners
+        ['mousemove', 'keypress', 'click', 'touchstart', 'touchmove', 'scroll'].forEach(event => {
+            document.removeEventListener(event, detectUserActivity, { passive: true });
         });
+        
+        window.removeEventListener('beforeunload', handlePageExit, { passive: false });
+        window.removeEventListener('pagehide', handlePageExit, { passive: true });
+        window.removeEventListener('unload', handlePageExit, { passive: true });
+        document.removeEventListener('visibilitychange', () => {}, { passive: true });
     }
 
     // --- Initialization ---
@@ -793,9 +885,9 @@
             loadWaitingMembers();
             checkStatus();
             
-            statusCheckInterval = setInterval(checkStatus, 1000);
-            memberCheckInterval = setInterval(loadWaitingMembers, 3000);
-            heartbeatInterval = setInterval(updateCandidateActivity, 10000);
+            statusCheckInterval = setInterval(checkStatus, 500);  // Check round start every 500ms for instant detection
+            memberCheckInterval = setInterval(loadWaitingMembers, 1500); // Check candidates every 1.5s instead of 3s
+            heartbeatInterval = setInterval(updateCandidateActivity, 3000); // Fallback heartbeat every 3s instead of 10s
         })();
     }
 
@@ -806,23 +898,6 @@
         initializeWaitingRoom();
     }
 
-    // --- Unload Handling ---
-    window.addEventListener('beforeunload', () => {
-        cleanup();
-        if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
-            navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
-        }
-        sessionStorage.removeItem(sessionKey);
-    });
-
-    // Handle visibility change
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
-                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
-            }
-        }
-    });
 </script>
 
 <!-- Watermark -->
