@@ -773,17 +773,26 @@
                 xhr.open('POST', '/api/exit-waiting/' + candidateEntryId + '/', false); // synchronous
                 xhr.setRequestHeader('X-CSRFToken', csrfToken);
                 xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({ source: 'beforeunload' }));
+                xhr.send(JSON.stringify({ source: 'beforeunload', timestamp: Date.now() }));
+                log('✓ Successfully sent synchronous exit signal on beforeunload');
             } catch (e) {
-                // Fallback to sendBeacon
-                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'beforeunload' }));
+                // Fallback to sendBeacon (more reliable for unload events)
+                try {
+                    navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'beforeunload', timestamp: Date.now() }));
+                    log('✓ Successfully sent beacon exit signal on beforeunload');
+                } catch (beaconError) {
+                    log('✗ Both exit methods failed:', beaconError.message);
+                }
             }
         }
     }
     
     // Multiple exit handlers for maximum reliability
+    // beforeunload: Fires when user navigates away, refreshes, or closes (most reliable)
     window.addEventListener('beforeunload', handlePageExit, { passive: false });
+    // pagehide: Fires on page visibility changes (backup)
     window.addEventListener('pagehide', handlePageExit, { passive: true });
+    // unload: Fires on unload (deprecated but still useful as fallback)
     window.addEventListener('unload', handlePageExit, { passive: true });
     
     // Add activity listeners with passive flag - more responsive
@@ -825,11 +834,45 @@
     function exitWaiting() {
         if (confirm('Leave the waiting room?')) {
             isRedirecting = true;
-            if (candidateEntryId && candidateEntryId !== "null") {
-                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/');
+            
+            // Stop all heartbeats and polling immediately
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
             }
-            sessionStorage.removeItem(sessionKey);
-            window.location.replace('/login/candidate/');
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            if (memberCheckInterval) {
+                clearInterval(memberCheckInterval);
+                memberCheckInterval = null;
+            }
+            
+            if (candidateEntryId && candidateEntryId !== "null") {
+                // Send exit signal immediately and wait a bit before redirect
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                fetch('/api/exit-waiting/' + candidateEntryId + '/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+                    keepalive: true
+                }).then(() => {
+                    log('✓ Exit signal sent, redirecting...');
+                    setTimeout(() => {
+                        sessionStorage.removeItem(sessionKey);
+                        window.location.replace('/login/candidate/');
+                    }, 100);
+                }).catch(err => {
+                    log('Exit signal failed, redirecting anyway:', err.message);
+                    setTimeout(() => {
+                        sessionStorage.removeItem(sessionKey);
+                        window.location.replace('/login/candidate/');
+                    }, 100);
+                });
+            } else {
+                sessionStorage.removeItem(sessionKey);
+                window.location.replace('/login/candidate/');
+            }
         }
     }
 

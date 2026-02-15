@@ -344,6 +344,7 @@
         .pill-active { background: var(--primary-light); color: var(--primary-dark); }
         .pill-waiting { background: var(--warning-bg); color: var(--warning-text); }
         .pill-left { background: var(--danger-bg); color: var(--danger-text); }
+        .pill-inactive { background: #F3F4F6; color: #6B7280; }
         
         .round-status-badge {
             display: flex;
@@ -865,6 +866,7 @@
                 if (candidate.is_submitted) statusBadge = '<span class="status-pill pill-submitted"><span class="material-icons-outlined" style="font-size: 14px;">check</span>Submitted</span>';
                 else if (candidate.status === 'Giving Test') statusBadge = '<span class="status-pill pill-active"><span class="material-icons-outlined" style="font-size: 14px;">hourglass_top</span>In Test</span>';
                 else if (candidate.status === 'Waiting') statusBadge = '<span class="status-pill pill-waiting"><span class="material-icons-outlined" style="font-size: 14px;">schedule</span>Waiting</span>';
+                else if (candidate.status === 'Inactive') statusBadge = '<span class="status-pill pill-inactive"><span class="material-icons-outlined" style="font-size: 14px;">cloud_off</span>Inactive</span>';
                 else if (candidate.status === 'Left') statusBadge = '<span class="status-pill pill-left"><span class="material-icons-outlined" style="font-size: 14px;">close</span>Left</span>';
 
                 const scoreDisplay = candidate.is_submitted 

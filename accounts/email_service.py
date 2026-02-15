@@ -118,8 +118,6 @@ Quiz Platform
         )
         email.attach_alternative(html_message, "text/html")
         email.send()
-        
-        logger.info(f"Owner notification email sent to {owner_email}")
         return True
         
     except Exception as e:
@@ -214,8 +212,6 @@ def send_test_email(recipient_email):
             [recipient_email],
             fail_silently=False,
         )
-        
-        logger.info(f"Test email sent to {recipient_email}")
         return True
         
     except Exception as e:
@@ -254,7 +250,6 @@ def send_email_with_brevo(to_email, subject, html_content, plain_content):
         response = requests.post(url, json=payload, headers=headers)
         try:
             response.raise_for_status()
-            logger.info(f"Email sent successfully to {to_email}. Response: {response.json()}")
             return True
         except requests.exceptions.RequestException as e:
             logger.error(f"Failed to send email to {to_email}: {e}. Response: {response.text}")

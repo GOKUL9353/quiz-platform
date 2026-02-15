@@ -13,7 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Security settings
 SECRET_KEY = os.environ.get('SECRET_KEY')
-
+#SECRET_KEY = "GOKUL-9353617108"
 
 # Debug mode - Set to False for production, True for development
 DEBUG = False
@@ -51,18 +51,12 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': False,  # Must be False when using custom loaders
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-            ],
-            'loaders': [
-                ('django.template.loaders.cached.Loader', [
-                    'django.template.loaders.filesystem.Loader',
-                    'django.template.loaders.app_directories.Loader',
-                ]),
             ],
         },
     },
@@ -147,19 +141,23 @@ SESSION_CACHE_ALIAS = 'default'
 # Session configuration for performance
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = not DEBUG  # Only over HTTPS in production
+SESSION_COOKIE_SECURE = False  # Always False for local development
 SESSION_SAVE_EVERY_REQUEST = False  # Don't save session on every request
 
 # HTTP caching headers for browser caching
-SECURE_BROWSER_XSS_FILTER = True
-SECURE_CONTENT_SECURITY_POLICY = {
-    'default-src': ["'self'"],
-    'script-src': ["'self'", "'unsafe-inline'"],
-    'style-src': ["'self'", "'unsafe-inline'", 'fonts.googleapis.com'],
-    'font-src': ["'self'", 'fonts.gstatic.com'],
-    'connect-src': ["'self'"],
-    'img-src': ["'self'", 'data:'],
-}
+if not DEBUG:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_SECURITY_POLICY = {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", 'fonts.googleapis.com'],
+        'font-src': ["'self'", 'fonts.gstatic.com'],
+        'connect-src': ["'self'"],
+        'img-src': ["'self'", 'data:'],
+    }
+else:
+    # Development: disable all security headers
+    SECURE_BROWSER_XSS_FILTER = False
 
 # Optimize static files
 WHITENOISE_AUTOREFRESH = False  # Turn off auto-refresh in production
@@ -168,7 +166,7 @@ WHITENOISE_USE_FINDERS = True  # Use Django finders
 # Database query optimization
 DATABASES['default']['ATOMIC_REQUESTS'] = False  # Disable atomic requests for better performance with SQLite
 
-# Logging configuration for debugging
+# Logging configuration - ERROR level in production
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -179,17 +177,17 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO',
+        'level': 'ERROR',
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'ERROR',
             'propagate': False,
         },
         'accounts': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'ERROR',
         },
     },
 }
@@ -198,34 +196,25 @@ LOGGING = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+if not DEBUG:
+    STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    # WhiteNoise compression for static files
+    WHITENOISE_COMPRESS_OFFLINE = True
+    WHITENOISE_COMPRESS_ONLINE = True
 
 # ============================================
 # PRODUCTION DEPLOYMENT SETTINGS
 # ============================================
 
-# HTTP/HTTPS settings
-SECURE_SSL_REDIRECT = not DEBUG  # Enable in production
-SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0  # 1 year in production
-SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
-SECURE_HSTS_PRELOAD = not DEBUG
+# HTTP/HTTPS settings - DISABLED FOR LOCAL DEVELOPMENT
+# Never force SSL in development
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 
-# Add expires headers for static files with WhiteNoise
-WHITENOISE_COMPRESS_OFFLINE = True
-WHITENOISE_COMPRESS_ONLINE = True
-WHITENOISE_ADD_HEADERS_TO_MANIFEST = True
-
-# Performance optimizations
-TEMPLATES[0]['OPTIONS']['debug'] = DEBUG
-
-# Security headers (additional)
+# Security headers
 X_FRAME_OPTIONS = 'DENY'
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = True
-
-# Development settings
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    SECURE_SSL_REDIRECT = False
-    # Allow browsers to cache static files
-    STATIC_DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
