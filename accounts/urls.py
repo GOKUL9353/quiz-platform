@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/update-candidate-active/<int:candidate_entry_id>/', views.update_candidate_active, name='update_candidate_active'),
     path('api/exit-waiting/<int:candidate_entry_id>/', views.exit_waiting, name='exit_waiting'),
     path('api/init-waiting/<int:candidate_entry_id>/', views.init_waiting, name='init_waiting'),
+    path('api/mark-tab-switched/<int:candidate_entry_id>/', views.mark_tab_switched, name='mark_tab_switched'),
     path('api/check-hosting-status/<int:event_id>/<int:round_number>/', views.check_hosting_status, name='check_hosting_status'),
     path('api/start-hosting/<int:event_id>/<int:round_number>/', views.api_start_hosting, name='api_start_hosting'),
     path('api/end-hosting/<int:event_id>/<int:round_number>/', views.api_end_hosting, name='api_end_hosting'),

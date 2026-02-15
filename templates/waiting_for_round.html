@@ -698,6 +698,16 @@
     let pageHidden = false;
     let hasLeftTab = false;  // Track if candidate has switched away from tab
     
+    function markTabSwitched() {
+        if (!candidateEntryId || candidateEntryId === "null") return;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        fetch('/api/mark-tab-switched/' + candidateEntryId + '/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+            keepalive: true
+        }).catch(err => log('Mark tab switched failed:', err.message));
+    }
+    
     function detectUserActivity() {
         const now = Date.now();
         // Send heartbeat every 3 seconds if user is active, or every 5 seconds minimum
@@ -717,10 +727,10 @@
             log('🚨 Tab hidden: Candidate switched to another tab/window');
             
             if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
-                // Mark as not waiting when they switch away (before round starts)
-                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'tab-hidden' }));
+                // Only mark as having switched tabs - don't mark as exited
+                markTabSwitched();
                 
-                // Update UI to indicate they left
+                // Update UI to indicate they switched tabs
                 const mainText = document.getElementById('main-status-text');
                 if (mainText) {
                     mainText.textContent = "⚠️ Tab switched to another window";

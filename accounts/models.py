@@ -52,6 +52,7 @@ class CandidateEntry(models.Model):
     time_taken_seconds = models.IntegerField(default=0, null=True, blank=True)
     entry_time = models.DateTimeField(auto_now_add=True, db_index=True)
     last_active = models.DateTimeField(auto_now_add=True)
+    has_switched_tabs = models.BooleanField(default=False)
     
     def __str__(self):
         return f"{self.candidate_name} - {self.round}"

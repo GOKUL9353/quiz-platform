@@ -537,7 +537,12 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="candidate-name">{{ candidate.name }}</div>
+                                    <div class="candidate-name" style="display: flex; align-items: center; gap: 8px;">
+                                        {{ candidate.name }}
+                                        {% if candidate.has_switched_tabs %}
+                                            <span class="material-icons-outlined" style="font-size: 18px; color: #f59e0b; font-weight: 700;" title="Candidate switched tabs/windows">warning</span>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td>
                                     {% if candidate.status == "Submitted" %}
@@ -877,7 +882,10 @@
                         </div>
                     </td>
                     <td>
-                        <div class="candidate-name">${candidate.name}</div>
+                        <div class="candidate-name" style="display: flex; align-items: center; gap: 8px;">
+                            ${candidate.name}
+                            ${candidate.has_switched_tabs ? '<span class="material-icons-outlined" style="font-size: 18px; color: #f59e0b; font-weight: 700;" title="Candidate switched tabs/windows">warning</span>' : ''}
+                        </div>
                     </td>
                     <td>
                         ${statusBadge}

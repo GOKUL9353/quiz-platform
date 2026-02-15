@@ -623,6 +623,24 @@ def init_waiting(request, candidate_entry_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+def mark_tab_switched(request, candidate_entry_id):
+    """API endpoint to mark when candidate switches tabs"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+        candidate_entry.has_switched_tabs = True
+        candidate_entry.save(update_fields=['has_switched_tabs'])
+        logger.info(f"Marked candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) as switched tabs")
+        return JsonResponse({'success': True, 'message': 'Tab switch recorded'})
+    except CandidateEntry.DoesNotExist:
+        logger.warning(f"mark_tab_switched called for non-existent candidate ID: {candidate_entry_id}")
+        return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
+    except Exception as e:
+        logger.error(f"mark_tab_switched error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 @csrf_exempt
 def check_hosting_status(request, event_id, round_number):
     """API endpoint to check if hosting is still active"""
@@ -907,7 +925,8 @@ def api_get_candidates(request, event_id, round_number):
                     'status': status,
                     'score': candidate.score if candidate.score else 0,
                     'total_questions': candidate.total_questions if candidate.total_questions else 0,
-                    'time_taken': time_display
+                    'time_taken': time_display,
+                    'has_switched_tabs': candidate.has_switched_tabs
                 })
         else:
             # Before round starts (hosting): show all candidates who entered, with their status
@@ -954,7 +973,8 @@ def api_get_candidates(request, event_id, round_number):
                     'status': status,
                     'score': 0,
                     'total_questions': 0,
-                    'time_taken': ''
+                    'time_taken': '',
+                    'has_switched_tabs': candidate.has_switched_tabs
                 })
         
         

@@ -101,6 +101,27 @@
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
+    /* --- FADE-IN ANIMATIONS --- */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
     /* --- LAYOUT STRUCTURE --- */
     .split-layout {
         position: fixed;
@@ -129,6 +150,7 @@
         justify-content: center;
         padding: 40px;
         position: relative;
+        animation: fadeIn 1s ease-out forwards;
     }
 
     .brand-content {
@@ -178,12 +200,16 @@
         width: 100%;
         max-width: 480px;
         padding: 30px;
+        animation: fadeInUp 1s ease-out 0.3s forwards;
+        opacity: 0;
     }
 
     /* --- HEADER & LOGO --- */
     .card-header {
         text-align: center;
         margin-bottom: 50px;
+        animation: fadeInUp 0.8s ease-out 0.4s forwards;
+        opacity: 0;
     }
 
     .glass-logo {
@@ -202,6 +228,8 @@
         color: #fff;
         border-radius: 27px;
         margin-bottom: 24px;
+        animation: fadeInUp 0.6s ease-out 0.5s forwards;
+        opacity: 0;
     }
 
     .logo-icon { width: 36px; height: 36px; }
@@ -227,6 +255,8 @@
         display: flex;
         flex-direction: column;
         gap: 24px;
+        animation: fadeIn 0.8s ease-out 0.6s forwards;
+        opacity: 0;
     }
 
     .glass-card {
@@ -252,6 +282,16 @@
         
         transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
         overflow: hidden;
+        animation: fadeInUp 0.6s ease-out forwards;
+        opacity: 0;
+    }
+
+    .role-grid .glass-card:nth-child(1) {
+        animation-delay: 0.7s;
+    }
+
+    .role-grid .glass-card:nth-child(2) {
+        animation-delay: 0.85s;
     }
 
 
@@ -311,6 +351,8 @@
     .card-footer {
         margin-top: 60px;
         text-align: center;
+        animation: fadeIn 0.8s ease-out 1s forwards;
+        opacity: 0;
     }
 
     .card-footer p {
