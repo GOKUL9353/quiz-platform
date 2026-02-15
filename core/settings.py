@@ -12,13 +12,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Security settings
-#SECRET_KEY = os.environ.get('SECRET_KEY')
-SECRET_KEY = "GOKUL-9353617108"
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
 
 # Debug mode - Set to False for production, True for development
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['.onrender.com']
 
 
 # Application definition
