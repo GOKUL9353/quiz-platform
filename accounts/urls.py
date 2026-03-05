@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/verify-round-password/<int:event_id>/<int:round_number>/', views.verify_round_password, name='verify_round_password'),
     path('api/submit-quiz/', views.submit_quiz, name='submit_quiz'),
     path('api/check-round-started/<int:event_id>/<int:round_number>/', views.check_round_started, name='check_round_started'),
+    path('api/check-connectivity/', views.check_connectivity, name='check_connectivity'),
     path('api/update-candidate-active/<int:candidate_entry_id>/', views.update_candidate_active, name='update_candidate_active'),
     path('api/exit-waiting/<int:candidate_entry_id>/', views.exit_waiting, name='exit_waiting'),
     path('api/init-waiting/<int:candidate_entry_id>/', views.init_waiting, name='init_waiting'),

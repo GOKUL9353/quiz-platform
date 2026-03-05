@@ -440,24 +440,36 @@
     // --- Prevent access on page refresh ---
     const sessionKey = `waiting_session_${candidateEntryId}`;
     let isFirstVisit = false;
+    let isPageRefresh = false;
+    
     if (!sessionStorage.getItem(sessionKey)) {
         sessionStorage.setItem(sessionKey, 'active');
         isFirstVisit = true;
     } else {
-        // Page refresh detected - mark as exited before redirecting
-        isRedirecting = true;
-        sessionStorage.removeItem(sessionKey);
+        // Check if this is a legitimate refresh vs. coming back from exit
+        const lastExitTime = sessionStorage.getItem(`exit_time_${candidateEntryId}`);
+        const now = Date.now();
         
-        if (candidateEntryId && candidateEntryId !== "null") {
-            // Immediately exit waiting status before redirect
-            navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'page-refresh' }));
-            log('Page refreshed - sending exit beacon');
+        if (lastExitTime && (now - parseInt(lastExitTime)) < 5000) {
+            // User just exited, don't treat as refresh
+            log('User returned after recent exit, allowing re-entry');
+            isFirstVisit = true;
+        } else {
+            // This is a page refresh - mark as exited before redirecting
+            isPageRefresh = true;
+            sessionStorage.removeItem(sessionKey);
+            
+            if (candidateEntryId && candidateEntryId !== "null") {
+                // Immediately exit waiting status before redirect
+                navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'page-refresh' }));
+                log('Page refreshed - sending exit beacon');
+            }
+            
+            // Small delay to ensure beacon is sent
+            setTimeout(() => {
+                window.location.replace('/login/candidate/');
+            }, 50);
         }
-        
-        // Small delay to ensure beacon is sent
-        setTimeout(() => {
-            window.location.replace('/login/candidate/');
-        }, 50);
     }
 
     // --- Cache DOM Elements ---
@@ -723,6 +735,69 @@
         }).catch(err => log('Mark tab switched failed:', err.message));
     }
     
+    // Function to show tab switch warning overlay
+    let tabSwitchWarningShown = false;
+    function showTabSwitchWarning() {
+        if (tabSwitchWarningShown) return;
+        
+        // Create warning overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'tabSwitchWarning';
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(245, 158, 11, 0.95);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        `;
+        
+        overlay.innerHTML = `
+            <div>
+                <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
+                <h2 style="font-size: 2rem; margin-bottom: 10px; font-weight: 700;">Tab Switching Detected</h2>
+                <p style="font-size: 1.1rem; margin-bottom: 20px; opacity: 0.9;">
+                    Please stay on this waiting room page. Switching tabs/windows has been recorded.
+                </p>
+                <div style="margin-top: 20px; font-size: 0.9rem; opacity: 0.7;">
+                    <span style="color: #fbbf24; font-weight: 600;">⚠️ Warning recorded in system</span>
+                </div>
+                <button onclick="hideTabSwitchWarning()" style="
+                    background: white;
+                    color: #f59e0b;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    margin-top: 20px;
+                ">I Understand</button>
+            </div>
+        `;
+        
+        document.body.appendChild(overlay);
+        tabSwitchWarningShown = true;
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => hideTabSwitchWarning(), 5000);
+    }
+    
+    function hideTabSwitchWarning() {
+        const overlay = document.getElementById('tabSwitchWarning');
+        if (overlay) {
+            overlay.remove();
+            tabSwitchWarningShown = false;
+        }
+    }
+    
     function detectUserActivity() {
         const now = Date.now();
         // Send heartbeat every 3 seconds if user is active, or every 5 seconds minimum
@@ -744,6 +819,9 @@
             if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
                 // Only mark as having switched tabs - don't mark as exited
                 markTabSwitched();
+                
+                // Show warning overlay to candidate
+                showTabSwitchWarning();
                 
                 // Update UI to indicate they switched tabs
                 const mainText = document.getElementById('main-status-text');
@@ -826,11 +904,11 @@
         if (isRedirecting) return;
 
         // Check Round Start
-        fetch('/api/check-round-started/' + eventId + '/' + roundNumber + '/')
+        fetch('/api/check-round-started/' + eventId + '/' + roundNumber + '/?candidate_entry_id=' + candidateEntryId)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data && data.started === true) {
-                    log('Round started!');
+                if (data && data.started === true && data.should_redirect === true) {
+                    log('Round started and candidate should be redirected!');
                     triggerStartSequence();
                 }
             })
@@ -872,21 +950,32 @@
                 memberCheckInterval = null;
             }
             
+            // Clear any pending timeouts
+            if (activityTimeout) {
+                clearTimeout(activityTimeout);
+                activityTimeout = null;
+            }
+            
             if (candidateEntryId && candidateEntryId !== "null") {
                 // Send exit signal immediately and wait a bit before redirect
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                 document.querySelector('[name=csrfmiddlewaretoken]')?.value;
                 fetch('/api/exit-waiting/' + candidateEntryId + '/', {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+                    headers: { 'X-CSRFToken': csrfToken || '', 'Content-Type': 'application/json' },
                     keepalive: true
                 }).then(() => {
                     log('✓ Exit signal sent, redirecting...');
+                    // Mark exit time to prevent refresh detection
+                    sessionStorage.setItem(`exit_time_${candidateEntryId}`, Date.now().toString());
                     setTimeout(() => {
                         sessionStorage.removeItem(sessionKey);
                         window.location.replace('/login/candidate/');
                     }, 100);
                 }).catch(err => {
                     log('Exit signal failed, redirecting anyway:', err.message);
+                    // Mark exit time even on failure
+                    sessionStorage.setItem(`exit_time_${candidateEntryId}`, Date.now().toString());
                     setTimeout(() => {
                         sessionStorage.removeItem(sessionKey);
                         window.location.replace('/login/candidate/');
@@ -961,9 +1050,9 @@
             loadWaitingMembers();
             checkStatus();
             
-            statusCheckInterval = setInterval(checkStatus, 500);  // Check round start every 500ms for instant detection
-            memberCheckInterval = setInterval(loadWaitingMembers, 1500); // Check candidates every 1.5s instead of 3s
-            heartbeatInterval = setInterval(updateCandidateActivity, 3000); // Fallback heartbeat every 3s instead of 10s
+            statusCheckInterval = setInterval(checkStatus, 1000);  // Check round start every 1 second
+            memberCheckInterval = setInterval(loadWaitingMembers, 300); // Check candidates every 300ms for immediate updates
+            heartbeatInterval = setInterval(updateCandidateActivity, 5000); // Heartbeat every 5 seconds
         })();
     }
 

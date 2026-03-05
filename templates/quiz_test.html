@@ -857,6 +857,7 @@
             timeLeft: CONFIG.durationMinutes * 60,
             timerInterval: null,
             activityInterval: null,
+            connectivityInterval: null,
             started: false
         };
 
@@ -889,6 +890,124 @@
             }
         }
 
+        function checkConnectivity() {
+            // Simple connectivity check by trying to fetch a small endpoint
+            fetch('/api/check-connectivity/', {
+                method: 'GET',
+                cache: 'no-cache'
+            }).then(response => {
+                if (!response.ok) {
+                    console.warn('Connectivity check failed');
+                }
+            }).catch(err => {
+                console.warn('Network connectivity issue:', err);
+            });
+        }
+
+        // Function to mark tab switching during quiz
+        function markTabSwitched() {
+            if (!CONFIG.candidateEntryId || !state.started) return;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfToken) return;
+            
+            fetch(`/api/mark-tab-switched/${CONFIG.candidateEntryId}/`, {
+                method: 'POST',
+                headers: { 
+                    'X-CSRFToken': csrfToken.value,
+                    'Content-Type': 'application/json' 
+                }
+            }).catch(err => console.log('Mark tab switched failed:', err));
+        }
+
+        let tabSwitchWarningShown = false;
+        let tabSwitchCount = 0;
+        const MAX_TAB_SWITCHES = 3; // Allow up to 3 tab switches before warning becomes permanent
+
+        // Detect tab switching during quiz
+        document.addEventListener('visibilitychange', () => {
+            if (!state.started) return;
+            
+            if (document.hidden) {
+                // Tab is hidden - candidate switched away
+                console.warn('🚨 Quiz tab hidden: Candidate switched to another tab/window');
+                markTabSwitched();
+                tabSwitchCount++;
+                
+                // Show warning overlay
+                showTabSwitchWarning();
+            } else {
+                // Tab is visible again
+                console.log('✅ Quiz tab visible again: Candidate returned');
+                hideTabSwitchWarning();
+            }
+        });
+
+        function showTabSwitchWarning() {
+            if (tabSwitchWarningShown) return;
+            
+            // Create warning overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'tabSwitchWarning';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(239, 68, 68, 0.95);
+                backdrop-filter: blur(8px);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                text-align: center;
+                padding: 20px;
+            `;
+            
+            overlay.innerHTML = `
+                <div>
+                    <div style="font-size: 3rem; margin-bottom: 20px;">⚠️</div>
+                    <h2 style="font-size: 2rem; margin-bottom: 10px; font-weight: 700;">Tab Switching Detected</h2>
+                    <p style="font-size: 1.1rem; margin-bottom: 20px; opacity: 0.9;">
+                        Please stay on this quiz page. Switching tabs/windows is not allowed and has been recorded.
+                    </p>
+                    <p style="font-size: 0.9rem; opacity: 0.8;">
+                        Switch count: ${tabSwitchCount}/${MAX_TAB_SWITCHES}
+                    </p>
+                    <div style="margin-top: 20px; font-size: 0.9rem; opacity: 0.7;">
+                        <span style="color: #fbbf24; font-weight: 600;">⚠️ Warning recorded in system</span>
+                    </div>
+                    <button onclick="hideTabSwitchWarning()" style="
+                        background: white;
+                        color: #dc2626;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        margin-top: 20px;
+                    ">I Understand</button>
+                </div>
+            `;
+            
+            document.body.appendChild(overlay);
+            tabSwitchWarningShown = true;
+            
+            // Auto-hide after 5 seconds if under limit
+            if (tabSwitchCount < MAX_TAB_SWITCHES) {
+                setTimeout(() => hideTabSwitchWarning(), 5000);
+            }
+        }
+
+        function hideTabSwitchWarning() {
+            const overlay = document.getElementById('tabSwitchWarning');
+            if (overlay) {
+                overlay.remove();
+                tabSwitchWarningShown = false;
+            }
+        }
+
         function startAssessment() {
             els.startModal.classList.remove('active');
             els.layout.style.filter = 'none';
@@ -896,8 +1015,11 @@
             state.started = true;
             updateTimerUI();
             state.timerInterval = setInterval(tick, 1000);
-            state.activityInterval = setInterval(updateCandidateActivity, 10000);
+            state.activityInterval = setInterval(updateCandidateActivity, 10000); // Keep at 10s for quiz
             updateCandidateActivity();
+            
+            // Add periodic connectivity check
+            state.connectivityInterval = setInterval(checkConnectivity, 30000); // Check every 30s
         }
 
         function tick() {
@@ -1042,9 +1164,49 @@
             }
         });
 
-        window.addEventListener('beforeunload', () => {
+        window.addEventListener('beforeunload', (e) => {
+            if (state.started && !state.submitted) {
+                // Prevent accidental navigation during quiz
+                e.preventDefault();
+                e.returnValue = 'Are you sure you want to leave? Your quiz progress will be lost!';
+                return e.returnValue;
+            }
+            
+            // Cleanup intervals
             if (state.timerInterval) clearInterval(state.timerInterval);
             if (state.activityInterval) clearInterval(state.activityInterval);
+            if (state.connectivityInterval) clearInterval(state.connectivityInterval);
+        });
+
+        // Prevent context menu (right-click) during quiz
+        document.addEventListener('contextmenu', (e) => {
+            if (state.started) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Prevent copy/paste during quiz
+        document.addEventListener('copy', (e) => {
+            if (state.started) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        document.addEventListener('paste', (e) => {
+            if (state.started) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Prevent text selection during quiz
+        document.addEventListener('selectstart', (e) => {
+            if (state.started) {
+                e.preventDefault();
+                return false;
+            }
         });
 
         history.pushState(null, null, location.href);

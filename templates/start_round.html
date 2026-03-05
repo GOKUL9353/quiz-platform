@@ -845,8 +845,8 @@
         // Call immediately
         pollCandidates();
         
-        // Then poll every 3 seconds
-        setInterval(pollCandidates, 3000);
+        // Then poll every 300ms for immediate updates
+        setInterval(pollCandidates, 300);
 
         function updateCandidatesTable(candidates) {
             const tbody = document.querySelector('table tbody');

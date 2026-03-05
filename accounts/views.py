@@ -115,6 +115,17 @@ def waiting_for_round(request, event_id, round_number):
         candidate_name = request.session.get('candidate_name', 'Anonymous')
         candidate_entry_id = request.session.get('candidate_entry_id', None)
         
+        # Check if candidate has exited
+        if candidate_entry_id:
+            try:
+                candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+                if not candidate_entry.is_waiting or candidate_entry.is_submitted:
+                    messages.error(request, 'You have exited the waiting room.')
+                    return redirect('candidate_login')
+            except CandidateEntry.DoesNotExist:
+                messages.error(request, 'Invalid session. Please login again.')
+                return redirect('candidate_login')
+        
         context = {
             'event': event,
             'round': round_obj,
@@ -381,6 +392,17 @@ def quiz_test(request, event_id, round_number):
             messages.error(request, 'Invalid session. Please login again.')
             return redirect('candidate_login')
         
+        # Verify candidate entry exists and is still eligible
+        try:
+            candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+            # Check if candidate has exited (is_waiting=False) or already submitted
+            if not candidate_entry.is_waiting or candidate_entry.is_submitted:
+                messages.error(request, 'You are not eligible to take this quiz.')
+                return redirect('candidate_login')
+        except CandidateEntry.DoesNotExist:
+            messages.error(request, 'Invalid session. Please login again.')
+            return redirect('candidate_login')
+        
         # Check if candidate has already accessed the quiz page (prevent refresh)
         quiz_session_key = f'quiz_accessed_{event_id}_{round_number}_{candidate_entry_id}'
         if request.session.get(quiz_session_key):
@@ -507,20 +529,25 @@ def submit_quiz(request):
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
 
         # Mark candidate as submitted with score and time
+        # Find the specific candidate entry that submitted (by name and round)
         try:
             from .models import CandidateEntry
-            candidate_entries = CandidateEntry.objects.filter(
+            # Use more specific criteria to avoid updating wrong candidates
+            candidate_entry = CandidateEntry.objects.filter(
                 round=round_obj,
-                candidate_name=candidate_name
-            )
-            for entry in candidate_entries:
-                entry.is_submitted = True
-                entry.score = score
-                entry.total_questions = total_questions
-                entry.time_taken_seconds = time_taken_seconds
-                entry.save()
-        except Exception:
-            pass
+                candidate_name=candidate_name,
+                is_waiting=False,  # Should have started the quiz
+                is_submitted=False  # Not already submitted
+            ).first()
+            
+            if candidate_entry:
+                candidate_entry.is_submitted = True
+                candidate_entry.score = score
+                candidate_entry.total_questions = total_questions
+                candidate_entry.time_taken_seconds = time_taken_seconds
+                candidate_entry.save(update_fields=['is_submitted', 'score', 'total_questions', 'time_taken_seconds'])
+        except Exception as e:
+            logger.error(f"Error updating candidate submission: {str(e)}")
 
         return JsonResponse({
             'success': True,
@@ -545,19 +572,39 @@ def submit_quiz(request):
 def check_round_started(request, event_id, round_number):
     """API endpoint to check if admin has started the round"""
     try:
+        # Get candidate_entry_id from query params if provided
+        candidate_entry_id = request.GET.get('candidate_entry_id')
+        
         # Optimize: Only fetch the fields we need
-        is_started = Round.objects.filter(
+        round_obj = Round.objects.filter(
             event_id=event_id, 
             round_number=round_number
-        ).values_list('is_started', flat=True).first()
+        ).first()
+        
+        if not round_obj:
+            return JsonResponse({'started': False, 'error': 'Round not found'}, status=404)
+        
+        started = round_obj.is_started
+        
+        # If round has started and we have a candidate_entry_id, check if they should be redirected
+        should_redirect = True
+        if started and candidate_entry_id:
+            try:
+                candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+                # Only redirect if they're still waiting (haven't exited)
+                should_redirect = candidate_entry.is_waiting and not candidate_entry.is_submitted
+            except CandidateEntry.DoesNotExist:
+                should_redirect = False
         
         return JsonResponse({
-            'started': is_started if is_started is not None else False
+            'started': started,
+            'should_redirect': should_redirect
         })
     except Exception as e:
         logger.error(f"check_round_started error: {str(e)}")
         return JsonResponse({
             'started': False,
+            'should_redirect': False,
             'error': str(e)
         }, status=500)
 
@@ -615,11 +662,14 @@ def init_waiting(request, candidate_entry_id):
         candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
         current_time = timezone.now()
         
-        # Only reset waiting status if round hasn't started yet
-        if candidate_entry.round and not candidate_entry.round.is_started and not candidate_entry.is_submitted:
-            candidate_entry.is_waiting = True
+        # Only reset waiting status if round hasn't started yet AND candidate hasn't exited
+        # If is_waiting is already False, it means they exited - don't reset it
+        if (candidate_entry.round and 
+            not candidate_entry.round.is_started and 
+            not candidate_entry.is_submitted and
+            candidate_entry.is_waiting):  # Only reset if they were already waiting
             candidate_entry.last_active = current_time
-            candidate_entry.save(update_fields=['is_waiting', 'last_active'])
+            candidate_entry.save(update_fields=['last_active'])
         else:
             # Just update the heartbeat even if round has started
             candidate_entry.last_active = current_time
@@ -631,6 +681,12 @@ def init_waiting(request, candidate_entry_id):
     except Exception as e:
         logger.error(f"init_waiting error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def check_connectivity(request):
+    """Simple connectivity check endpoint"""
+    return JsonResponse({'status': 'ok', 'timestamp': timezone.now().isoformat()})
 
 
 def mark_tab_switched(request, candidate_entry_id):
@@ -886,6 +942,21 @@ def api_get_candidates(request, event_id, round_number):
         candidates_data = []
         
         if round_obj.is_started:
+            # Get all candidates for this round
+            all_candidates = CandidateEntry.objects.filter(
+                round=round_obj,
+                access_code_used=round_obj.access_code
+            ).order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
+        
+        current_time = timezone.now()
+        threshold_90s = current_time - timedelta(seconds=90)
+        threshold_30s = current_time - timedelta(seconds=30)
+        threshold_45s = current_time - timedelta(seconds=45)  # For waiting room timeout
+        waiting_timeout = current_time - timedelta(seconds=45)  # Reduced from 60 to 45 seconds for faster detection
+        
+        candidates_data = []
+        
+        if round_obj.is_started:
             # After round starts: show only candidates who actually started the quiz or submitted
             # Do NOT show candidates who just exited the waiting room
             
@@ -975,10 +1046,15 @@ def api_get_candidates(request, event_id, round_number):
                 })
         
         
-        return JsonResponse({
+        response = JsonResponse({
             'success': True,
             'candidates': candidates_data
         })
+        # Prevent caching to ensure real-time updates
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return response
     except Round.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Round not found'}, status=404)
     except Exception as e:
