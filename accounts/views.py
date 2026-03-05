@@ -455,8 +455,6 @@ def submit_quiz(request):
         # Get candidate info
         candidate_name = data.get('candidate_name', 'Anonymous')
 
-        logger.info(f"Submitting quiz for {candidate_name} - Event: {event.name}, Round: {round_number}")
-
         # Calculate score
         score = 0
         answered_count = 0
@@ -483,13 +481,11 @@ def submit_quiz(request):
 
                 # Use cached data instead of querying database
                 if question_id not in questions_cache:
-                    logger.warning(f"Question {question_id} not found in round")
                     continue
                 
                 question = questions_cache[question_id]
                 
                 if option_id not in options_cache.get(question_id, {}):
-                    logger.warning(f"Option {option_id} not found for question {question_id}")
                     continue
                 
                 option = options_cache[question_id][option_id]
@@ -523,13 +519,9 @@ def submit_quiz(request):
                 entry.total_questions = total_questions
                 entry.time_taken_seconds = time_taken_seconds
                 entry.save()
-            logger.info(f"Marked candidate {candidate_name} as submitted - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
-        except Exception as e:
-            logger.warning(f"Could not mark candidate as submitted: {str(e)}")
+        except Exception:
+            pass
 
-        logger.info(f"Quiz submission completed - Score: {score}/{total_questions} - Time: {time_taken_seconds}s")
-
-        logger.info(f"✓ Quiz submission completed successfully")
         return JsonResponse({
             'success': True,
             'score': score,
@@ -559,7 +551,6 @@ def check_round_started(request, event_id, round_number):
             round_number=round_number
         ).values_list('is_started', flat=True).first()
         
-        logger.info(f"check_round_started - Event: {event_id}, Round: {round_number}, is_started: {is_started}")
         return JsonResponse({
             'started': is_started if is_started is not None else False
         })
@@ -582,7 +573,6 @@ def update_candidate_active(request, candidate_entry_id):
         # If round hasn't started yet and candidate was marked as not waiting, mark them as waiting again (they came back)
         if candidate_entry.round and not candidate_entry.round.is_started and not candidate_entry.is_waiting and not candidate_entry.is_submitted:
             candidate_entry.is_waiting = True
-            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-activated heartbeat, marked as waiting again")
         
         candidate_entry.save(update_fields=['last_active', 'is_waiting'])
         return JsonResponse({'success': True, 'last_active': current_time.isoformat()})
@@ -600,15 +590,18 @@ def exit_waiting(request, candidate_entry_id):
     try:
         candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
         
-        # Only mark as not waiting if round hasn't started yet
-        if candidate_entry.round and not candidate_entry.round.is_started:
-            candidate_entry.is_waiting = False
-            candidate_entry.save(update_fields=['is_waiting'])
-            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) marked as exited from waiting room")
+        # Only mark as not waiting if not already submitted
+        # This ensures we remove them from waiting list in all phases before submission
+        if candidate_entry.round and not candidate_entry.is_submitted:
+            if not candidate_entry.round.is_started:
+                candidate_entry.is_waiting = False
+                candidate_entry.save(update_fields=['is_waiting'])
+            else:
+                candidate_entry.is_waiting = False
+                candidate_entry.save(update_fields=['is_waiting'])
         
-        return JsonResponse({'success': True, 'message': 'Candidate marked as exited'})
+        return JsonResponse({'success': True, 'message': 'Candidate marked as exited', 'candidate_id': candidate_entry_id})
     except CandidateEntry.DoesNotExist:
-        logger.warning(f"exit_waiting called for non-existent candidate ID: {candidate_entry_id}")
         return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
     except Exception as e:
         logger.error(f"exit_waiting error: {str(e)}")
@@ -627,7 +620,6 @@ def init_waiting(request, candidate_entry_id):
             candidate_entry.is_waiting = True
             candidate_entry.last_active = current_time
             candidate_entry.save(update_fields=['is_waiting', 'last_active'])
-            logger.info(f"Candidate {candidate_entry.candidate_name} (ID: {candidate_entry_id}) re-initialized waiting status")
         else:
             # Just update the heartbeat even if round has started
             candidate_entry.last_active = current_time
@@ -635,12 +627,27 @@ def init_waiting(request, candidate_entry_id):
         
         return JsonResponse({'success': True, 'message': 'Waiting status initialized'})
     except CandidateEntry.DoesNotExist:
-        logger.warning(f"init_waiting called for non-existent candidate ID: {candidate_entry_id}")
         return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
     except Exception as e:
         logger.error(f"init_waiting error: {str(e)}")
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
+
+def mark_tab_switched(request, candidate_entry_id):
+    """API endpoint to mark when candidate switches tabs"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
+        candidate_entry.has_switched_tabs = True
+        candidate_entry.save(update_fields=['has_switched_tabs'])
+        return JsonResponse({'success': True, 'message': 'Tab switch recorded'})
+    except CandidateEntry.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Candidate not found'}, status=404)
+    except Exception as e:
+        logger.error(f"mark_tab_switched error: {str(e)}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @csrf_exempt
 def check_hosting_status(request, event_id, round_number):
@@ -796,8 +803,6 @@ def api_start_hosting(request, event_id, round_number):
         round_obj.is_started = False
         round_obj.save()
         
-        logger.info(f"New hosting session started for Round {round_number} with access code: {round_obj.access_code}")
-        
         return JsonResponse({
             'success': True,
             'access_code': round_obj.access_code,
@@ -822,8 +827,6 @@ def api_end_hosting(request, event_id, round_number):
         round_obj.is_started = False
         round_obj.access_code = None  # Clear the access code
         round_obj.save()
-        
-        logger.info(f"Hosting ended for Round {round_number}. Access code cleared.")
         
         return JsonResponse({
             'success': True,
@@ -920,7 +923,8 @@ def api_get_candidates(request, event_id, round_number):
                     'status': status,
                     'score': candidate.score if candidate.score else 0,
                     'total_questions': candidate.total_questions if candidate.total_questions else 0,
-                    'time_taken': time_display
+                    'time_taken': time_display,
+                    'has_switched_tabs': candidate.has_switched_tabs
                 })
         else:
             # Before round starts (hosting): show all candidates who entered, with their status
@@ -932,8 +936,7 @@ def api_get_candidates(request, event_id, round_number):
                 last_active__lt=waiting_timeout
             )
             if inactive_candidates.exists():
-                marked_count = inactive_candidates.update(is_waiting=False)  # Mark them as no longer waiting
-                logger.info(f"Auto-marked {marked_count} candidates as inactive (no heartbeat > 45s) for Round {round_number}")
+                marked_count = inactive_candidates.update(is_waiting=False)
             
             # Get all candidates for display (both waiting and left)
             # Waiting candidates with recent heartbeat
@@ -956,7 +959,7 @@ def api_get_candidates(request, event_id, round_number):
                     if candidate.last_active >= waiting_timeout:
                         status = "Waiting"
                     else:
-                        status = "Inactive"  # Was waiting but timed out
+                        status = "Inactive"  # Was waiting but timed out (no heartbeat for 45+s)
                 else:
                     status = "Left"  # Explicitly left or timed out and marked as left
                 
@@ -967,7 +970,8 @@ def api_get_candidates(request, event_id, round_number):
                     'status': status,
                     'score': 0,
                     'total_questions': 0,
-                    'time_taken': ''
+                    'time_taken': '',
+                    'has_switched_tabs': candidate.has_switched_tabs
                 })
         
         

@@ -370,15 +370,6 @@
             transition: opacity 0.3s ease;
         }
 
-        .question-card:hover {
-            box-shadow: var(--shadow-float);
-            border-color: var(--primary-border);
-        }
-
-        .question-card:hover::before {
-            opacity: 1;
-        }
-
         .card-content {
             padding: 40px;
         }
@@ -429,11 +420,6 @@
             position: relative;
         }
 
-        .option-label:hover {
-            background: var(--bg-subtle);
-            border-color: var(--primary-border);
-        }
-
         .option-label.selected {
             background: var(--primary-soft);
             border-color: var(--primary);
@@ -469,10 +455,6 @@
             border-radius: 50%;
             transform: scale(0);
             transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .option-label:hover .radio-indicator {
-            border-color: var(--primary);
         }
 
         .option-label.selected .radio-indicator {
