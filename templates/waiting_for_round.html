@@ -578,11 +578,15 @@
         if (candidateEntryId && candidateEntryId !== "null") {
             updateCandidateActivity();
             
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                             document.querySelector('[name="csrfmiddlewaretoken"]')?.value;
             try {
                 await fetch('/api/init-waiting/' + candidateEntryId + '/', {
                     method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+                    headers: { 
+                        'X-CSRFToken': csrfToken || '',
+                        'Content-Type': 'application/json' 
+                    },
                     keepalive: true
                 });
             } catch (err) {
@@ -601,13 +605,18 @@
         const countDisplay = cachedElements.countdownDisplay;
         const glassBar = cachedElements.glassBar;
 
+        if (!mainText || !countDisplay) {
+            console.error('Error: Required DOM elements not found');
+            return;
+        }
+
         mainText.textContent = "Round Started!";
         mainText.style.color = "#4ade80";
-        subInfo.style.display = "none";
+        if (subInfo) subInfo.style.display = "none";
         
-        spinner.style.display = "none";
+        if (spinner) spinner.style.display = "none";
         countDisplay.style.display = "block";
-        glassBar.style.borderColor = "rgba(74, 222, 128, 0.5)";
+        if (glassBar) glassBar.style.borderColor = "rgba(74, 222, 128, 0.5)";
 
         let count = 3;
         countDisplay.textContent = count;
@@ -665,7 +674,9 @@
         });
 
         const count = Math.max(0, candidatesList.length - 1);
-        cachedElements.countNum.textContent = count;
+        if (cachedElements.countNum) {
+            cachedElements.countNum.textContent = count;
+        }
         log('Updated bubbles count:', bubbles.length);
     }
 
@@ -684,10 +695,14 @@
 
     function updateCandidateActivity() {
         if (!candidateEntryId || candidateEntryId === "null") return;
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                         document.querySelector('[name="csrfmiddlewaretoken"]')?.value;
         fetch('/api/update-candidate-active/' + candidateEntryId + '/', {
             method: 'POST',
-            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+            headers: { 
+                'X-CSRFToken': csrfToken || '',
+                'Content-Type': 'application/json' 
+            }
         }).catch(err => log('Heartbeat failed:', err.message));
     }
 
@@ -735,10 +750,14 @@
                 
                 // Send immediate heartbeat to mark as active again
                 if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                     document.querySelector('[name="csrfmiddlewaretoken"]')?.value;
                     fetch('/api/update-candidate-active/' + candidateEntryId + '/', {
                         method: 'POST',
-                        headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+                        headers: { 
+                            'X-CSRFToken': csrfToken || '',
+                            'Content-Type': 'application/json' 
+                        }
                     }).catch(err => log('Heartbeat on tab return failed:', err.message));
                     
                     // Reset UI
@@ -755,15 +774,18 @@
     // Handle page unload/close - must be reliable
     function handlePageExit() {
         if (!isRedirecting && candidateEntryId && candidateEntryId !== "null") {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                             document.querySelector('[name="csrfmiddlewaretoken"]')?.value;
             
             // Try to send synchronously if possible (deprecated but still works)
             try {
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', '/api/exit-waiting/' + candidateEntryId + '/', false); // synchronous
-                xhr.setRequestHeader('X-CSRFToken', csrfToken);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-                xhr.send(JSON.stringify({ source: 'beforeunload' }));
+                if (csrfToken) {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/exit-waiting/' + candidateEntryId + '/', false); // synchronous
+                    xhr.setRequestHeader('X-CSRFToken', csrfToken);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.send(JSON.stringify({ source: 'beforeunload' }));
+                }
             } catch (e) {
                 // Fallback to sendBeacon
                 navigator.sendBeacon('/api/exit-waiting/' + candidateEntryId + '/', JSON.stringify({ source: 'beforeunload' }));
@@ -803,7 +825,9 @@
                 if (data && data.is_hosting === false && data.is_started === false) {
                     log('Host ended round');
                     isRedirecting = true;
-                    cachedElements.errorOverlay.style.display = 'flex';
+                    if (cachedElements.errorOverlay) {
+                        cachedElements.errorOverlay.style.display = 'flex';
+                    }
                     sessionStorage.removeItem(sessionKey);
                     setTimeout(() => window.location.replace('/login/candidate/'), 3000);
                 }

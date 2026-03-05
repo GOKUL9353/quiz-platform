@@ -404,6 +404,7 @@ def quiz_test(request, event_id, round_number):
             try:
                 candidate_entry = CandidateEntry.objects.get(id=candidate_entry_id)
                 candidate_entry.is_waiting = False
+                candidate_entry.quiz_started_at = timezone.now()  # Mark quiz started
                 candidate_entry.save()
             except CandidateEntry.DoesNotExist:
                 pass
@@ -435,6 +436,13 @@ def submit_quiz(request):
         round_number = data.get('round_number')
         answers = data.get('answers', {})  # dict of question_id: option_id
         time_taken_seconds = data.get('time_taken_seconds', 0)  # time taken in seconds
+        
+        # Validate required fields
+        if not event_id or not round_number:
+            return JsonResponse({'success': False, 'error': 'Missing event_id or round_number'}, status=400)
+        
+        if not isinstance(answers, dict):
+            return JsonResponse({'success': False, 'error': 'Invalid answers format'}, status=400)
 
         # Get event and round
         event = Event.objects.get(id=event_id)
@@ -461,7 +469,16 @@ def submit_quiz(request):
 
         for question_id_str, option_id_str in answers.items():
             try:
-                question_id = int(question_id_str.replace('question_', ''))
+                # Safely extract question ID
+                if isinstance(question_id_str, str):
+                    if question_id_str.startswith('question_'):
+                        question_id = int(question_id_str.replace('question_', ''))
+                    else:
+                        question_id = int(question_id_str)
+                else:
+                    question_id = int(question_id_str)
+                    
+                # Convert option ID to int
                 option_id = int(option_id_str)
 
                 # Use cached data instead of querying database
@@ -483,8 +500,11 @@ def submit_quiz(request):
                 # Check if correct
                 if option.is_correct:
                     score += 1
-            except (Question.DoesNotExist, QuestionOption.DoesNotExist, ValueError) as e:
+            except (ValueError, TypeError) as e:
                 logger.warning(f"Error processing answer for question {question_id_str}: {str(e)}")
+                continue
+            except Exception as e:
+                logger.warning(f"Unexpected error processing answer for question {question_id_str}: {str(e)}")
                 continue
 
         total_questions = questions.count()
@@ -551,7 +571,6 @@ def check_round_started(request, event_id, round_number):
         }, status=500)
 
 
-@csrf_exempt
 @csrf_exempt
 def update_candidate_active(request, candidate_entry_id):
     """API endpoint to update candidate's last_active timestamp"""
@@ -669,16 +688,18 @@ def start_round(request, event_id, round_number):
         candidates_data = []
         
         if round_obj.is_started:
-            # After round starts: show ONLY candidates actively giving test or submitted
-            # 1. Candidates currently taking test (is_waiting=False, is_submitted=False, active in last 90 seconds)
+            # After round starts: show ONLY candidates who actually started the quiz or submitted
+            # Do NOT show candidates who exited the waiting room (quiz_started_at is NULL)
+            
+            # Candidates who submitted (is_submitted=True)
+            submitted = all_candidates.filter(is_submitted=True)
+            
+            # Candidates currently taking test (quiz_started_at NOT NULL, is_submitted=False, active in last 90 seconds)
             actively_testing = all_candidates.filter(
-                is_waiting=False,
+                quiz_started_at__isnull=False,  # They actually started the quiz
                 is_submitted=False,
                 last_active__gte=threshold_90s
             )
-            
-            # 2. Candidates who submitted (is_submitted=True)
-            submitted = all_candidates.filter(is_submitted=True)
             
             # Combine the two groups
             display_candidates = list(submitted) + list(actively_testing)
@@ -686,7 +707,7 @@ def start_round(request, event_id, round_number):
             for candidate in display_candidates:
                 if candidate.is_submitted:
                     status = "Submitted"
-                elif not candidate.is_waiting and candidate.last_active >= threshold_90s:
+                elif candidate.quiz_started_at and candidate.last_active >= threshold_90s:
                     status = "Giving Test"
                 else:
                     status = "Left"
@@ -862,34 +883,26 @@ def api_get_candidates(request, event_id, round_number):
         candidates_data = []
         
         if round_obj.is_started:
-            # After round starts: show only candidates actively giving test or submitted
-            # Filter out ghost candidates who never actually interacted
+            # After round starts: show only candidates who actually started the quiz or submitted
+            # Do NOT show candidates who just exited the waiting room
             
             # Submitted candidates (always show)
             submitted = all_candidates.filter(is_submitted=True)
             
-            # Actively testing candidates (must have recent activity AND have ever sent a heartbeat)
-            # Only show if they're actually testing and have been active in last 90 seconds
-            # Exclude ghost entries (those created but never sent a heartbeat - activity within 1 second of creation)
-            currently_active = []
-            for candidate in all_candidates.filter(
-                is_waiting=False,
+            # Actively testing candidates (must have actually started the quiz)
+            # Only show if: quiz_started_at is NOT NULL and they have recent activity
+            actively_testing = all_candidates.filter(
+                quiz_started_at__isnull=False,  # They actually started the quiz
                 is_submitted=False,
-                last_active__gte=threshold_90s
-            ):
-                # Skip if candidate never actually sent a heartbeat (entry_time == last_active)
-                time_diff = (candidate.last_active - candidate.entry_time).total_seconds()
-                if time_diff > 1:  # If more than 1 second has passed since creation, they sent a real update
-                    currently_active.append(candidate)
-            
-            actively_testing = currently_active
+                last_active__gte=threshold_90s  # Still active in last 90 seconds
+            )
             
             display_candidates = list(submitted) + list(actively_testing)
             
             for candidate in display_candidates:
                 if candidate.is_submitted:
                     status = "Submitted"
-                elif not candidate.is_waiting and candidate.last_active >= threshold_90s:
+                elif candidate.quiz_started_at and candidate.last_active >= threshold_90s:
                     status = "Giving Test"
                 else:
                     status = "Left"

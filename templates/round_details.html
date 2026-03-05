@@ -771,7 +771,12 @@
                 // Assuming standard Django setup for these vars
                 const eventId = "{{ event.id }}"; 
                 const roundNum = "{{ round_number }}";
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (!csrfTokenEl) {
+                    alert('Error: Security token missing');
+                    return;
+                }
+                const csrfToken = csrfTokenEl.value;
                 
                 // Note: Ensure your URL pattern matches this API call
                 const response = await fetch(`/api/delete-question/${eventId}/${roundNum}/${questionId}/`, {

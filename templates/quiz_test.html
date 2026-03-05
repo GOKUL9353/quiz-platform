@@ -892,11 +892,16 @@
         // Function to update candidate's last_active timestamp
         function updateCandidateActivity() {
             if (CONFIG.candidateEntryId && state.started) {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (!csrfToken) {
+                    console.warn('CSRF token not found');
+                    return;
+                }
                 fetch(`/api/update-candidate-active/${CONFIG.candidateEntryId}/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        'X-CSRFToken': csrfToken.value
                     }
                 }).catch(e => console.log('Activity update failed:', e));
             }
@@ -981,11 +986,20 @@
                 time_taken_seconds: timeTaken
             };
 
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfToken) {
+                console.error('CSRF token not found in form');
+                els.stLoading.style.display = 'none';
+                els.stConfirm.style.display = 'block';
+                alert('Error: Security token missing. Please refresh and try again.');
+                return;
+            }
+
             fetch(CONFIG.submitUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    'X-CSRFToken': csrfToken.value
                 },
                 body: JSON.stringify(payload)
             })
