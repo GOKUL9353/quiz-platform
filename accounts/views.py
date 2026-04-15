@@ -562,10 +562,21 @@ def submit_quiz(request):
 
     # Setup environment with Java path
     import os
+    import shutil
     env = os.environ.copy()
-    java_home = '/tmp/java'
-    env['JAVA_HOME'] = java_home
-    env['PATH'] = os.path.join(java_home, 'bin') + ':' + env.get('PATH', '')
+    
+    # Check for local Java installation (.java in project root)
+    # Render Python Native caches the project directory, so we store java there
+    cwd = os.getcwd()
+    local_java_home = os.path.join(cwd, '.java')
+    
+    if os.path.exists(os.path.join(local_java_home, 'bin', 'javac')):
+        env['JAVA_HOME'] = local_java_home
+        env['PATH'] = os.path.join(local_java_home, 'bin') + ':' + env.get('PATH', '')
+    elif os.path.exists('/tmp/java/bin/javac'):
+        env['JAVA_HOME'] = '/tmp/java'
+        env['PATH'] = '/tmp/java/bin:' + env.get('PATH', '')
+    # If using Docker or other setup, javac might already be inPATH
 
     try:
         data = json.loads(request.body)
@@ -683,16 +694,22 @@ def submit_quiz(request):
                         src = os.path.join(tmp_dir, 'solution.c')
                         exe = os.path.join(tmp_dir, 'solution.exe')
                         with open(src, 'w', encoding='utf-8') as f: f.write(code)
-                        comp = subprocess.run(['gcc', src, '-o', exe, '-lm'], capture_output=True, text=True, timeout=15, cwd=tmp_dir)
-                        if comp.returncode != 0: compile_err = comp.stderr
+                        try:
+                            comp = subprocess.run(['gcc', src, '-o', exe, '-lm'], capture_output=True, text=True, timeout=15, cwd=tmp_dir)
+                            if comp.returncode != 0: compile_err = comp.stderr
+                        except FileNotFoundError:
+                            compile_err = "C compiler (gcc) not found. System configuration error."
                         runner, cmd_args = 'exe', [exe]
                     elif language == 'java':
                         m = re.search(r'public\s+class\s+(\w+)', code)
                         class_name = m.group(1) if m else 'Solution'
                         src = os.path.join(tmp_dir, f'{class_name}.java')
                         with open(src, 'w', encoding='utf-8') as f: f.write(code)
-                        comp = subprocess.run(['javac', src], capture_output=True, text=True, timeout=15, cwd=tmp_dir, env=env)
-                        if comp.returncode != 0: compile_err = comp.stderr
+                        try:
+                            comp = subprocess.run(['javac', src], capture_output=True, text=True, timeout=15, cwd=tmp_dir, env=env)
+                            if comp.returncode != 0: compile_err = comp.stderr
+                        except FileNotFoundError:
+                            compile_err = "Java compiler (javac) not found. System configuration error."
                         runner, cmd_args = 'java', ['-cp', tmp_dir, class_name]
                     
                     if compile_err or not runner:

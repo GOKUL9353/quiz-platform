@@ -1,9 +1,9 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -o errexit
 
 APP_DIR="$(pwd)"
-JAVA_DIR="/tmp/java"
-mkdir -p $JAVA_DIR
+JAVA_DIR="$APP_DIR/.java"
+mkdir -p "$JAVA_DIR"
 
 if [ ! -f $JAVA_DIR/bin/javac ]; then
     cd $JAVA_DIR

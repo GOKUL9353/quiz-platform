@@ -7,8 +7,9 @@ echo "Script location: $0"
 echo "Script directory: $(dirname "$0")"
 
 # Create Java directory
-JAVA_DIR="/tmp/java"
-mkdir -p $JAVA_DIR
+APP_DIR="$(pwd)"
+JAVA_DIR="$APP_DIR/.java"
+mkdir -p "$JAVA_DIR"
 
 # Download and install OpenJDK 11
 if [ ! -f $JAVA_DIR/bin/javac ]; then
