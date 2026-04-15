@@ -1006,9 +1006,17 @@ def run_code(request):
 
     # Setup environment with Java path
     env = os.environ.copy()
-    java_home = '/tmp/java'
-    env['JAVA_HOME'] = java_home
-    env['PATH'] = os.path.join(java_home, 'bin') + ':' + env.get('PATH', '')
+    
+    # Check for local Java installation (.java in project root)
+    cwd = os.getcwd()
+    local_java_home = os.path.join(cwd, '.java')
+    
+    if os.path.exists(os.path.join(local_java_home, 'bin', 'javac')):
+        env['JAVA_HOME'] = local_java_home
+        env['PATH'] = os.path.join(local_java_home, 'bin') + ':' + env.get('PATH', '')
+    elif os.path.exists('/tmp/java/bin/javac'):
+        env['JAVA_HOME'] = '/tmp/java'
+        env['PATH'] = '/tmp/java/bin:' + env.get('PATH', '')
 
     try:
         data = json.loads(request.body)
@@ -1036,12 +1044,15 @@ def run_code(request):
                 exe = os.path.join(tmp_dir, 'solution.exe')
                 with open(src, 'w', encoding='utf-8') as f:
                     f.write(code)
-                comp = subprocess.run(
-                    ['gcc', src, '-o', exe, '-lm'],
-                    capture_output=True, text=True, timeout=30, cwd=tmp_dir
-                )
-                if comp.returncode != 0:
-                    return (None, None, comp.stderr)
+                try:
+                    comp = subprocess.run(
+                        ['gcc', src, '-o', exe, '-lm'],
+                        capture_output=True, text=True, timeout=30, cwd=tmp_dir
+                    )
+                    if comp.returncode != 0:
+                        return (None, None, comp.stderr)
+                except FileNotFoundError:
+                    return (None, None, "C compiler (gcc) not found. System configuration error.")
                 return ('exe', [exe], None)
 
             elif language == 'java':
@@ -1050,12 +1061,15 @@ def run_code(request):
                 src = os.path.join(tmp_dir, f'{class_name}.java')
                 with open(src, 'w', encoding='utf-8') as f:
                     f.write(code)
-                comp = subprocess.run(
-                    ['javac', src],
-                    capture_output=True, text=True, timeout=30, cwd=tmp_dir, env=env
-                )
-                if comp.returncode != 0:
-                    return (None, None, comp.stderr)
+                try:
+                    comp = subprocess.run(
+                        ['javac', src],
+                        capture_output=True, text=True, timeout=30, cwd=tmp_dir, env=env
+                    )
+                    if comp.returncode != 0:
+                        return (None, None, comp.stderr)
+                except FileNotFoundError:
+                    return (None, None, "Java compiler (javac) not found. System configuration error.")
                 return ('java', ['-cp', tmp_dir, class_name], None)
 
             return (None, None, f'Unsupported language: {language}')
