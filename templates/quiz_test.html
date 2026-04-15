@@ -2126,6 +2126,160 @@
         } else {
             initQuestionNavigation();
         }
+
+        // ═══ CODE EDITOR - AUTO-INDENTATION & DEFAULT TEMPLATES ═══════════
+        
+        const codeTemplates = {
+            python: `n = int(input())
+arr = list(map(int, input().split()))
+`,
+            java: `import java.util.*;
+
+public class Solution {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        int n = sc.nextInt();
+        int[] arr = new int[n];
+        for (int i = 0; i < n; i++) {
+            arr[i] = sc.nextInt();
+        }
+        
+        // Write your solution here
+        
+    }
+}
+`,
+            c: `#include <stdio.h>
+
+int main() {
+    int n;
+    scanf("%d", &n);
+    
+    int arr[n];
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &arr[i]);
+    }
+    
+    // Write your solution here
+    
+    return 0;
+}
+`
+        };
+
+        function setEditorContent(editor, language, existingContent) {
+            // Don't override if there's already content
+            if (existingContent && existingContent.trim().length > 0) {
+                editor.value = existingContent;
+            } else {
+                editor.value = codeTemplates[language] || '';
+            }
+        }
+
+        function initCodeEditor(editor) {
+            if (!editor) return;
+
+            // Handle keydown for indentation
+            editor.addEventListener('keydown', function(e) {
+                const TAB = 9;
+                const ENTER = 13;
+
+                // Handle TAB key for indentation
+                if (e.keyCode === TAB) {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const end = this.selectionEnd;
+                    const newValue = this.value.substring(0, start) + '\t' + this.value.substring(end);
+                    this.value = newValue;
+                    this.selectionStart = this.selectionEnd = start + 1;
+                }
+
+                // Handle ENTER key for auto-indentation
+                else if (e.keyCode === ENTER) {
+                    e.preventDefault();
+                    const start = this.selectionStart;
+                    const text = this.value;
+                    
+                    // Find the start of the current line
+                    let lineStart = text.lastIndexOf('\n', start - 1) + 1;
+                    
+                    // Get all leading whitespace from current line
+                    let leadingWhitespace = '';
+                    for (let i = lineStart; i < start && i < text.length; i++) {
+                        const char = text[i];
+                        if (char === ' ' || char === '\t') {
+                            leadingWhitespace += char;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // Check if we should add extra indentation (after : in python, { in any language)
+                    let extraIndent = '';
+                    if (text[start - 1] === ':' || text[start - 1] === '{') {
+                        extraIndent = '\t';
+                    }
+                    
+                    // Insert newline with preserved indentation
+                    const newValue = text.substring(0, start) + '\n' + leadingWhitespace + extraIndent + text.substring(start);
+                    this.value = newValue;
+                    this.selectionStart = this.selectionEnd = start + 1 + leadingWhitespace.length + extraIndent.length;
+                }
+            });
+        }
+
+        function setupLanguageChangeHandlers() {
+            // Find all language selectors for coding questions
+            document.querySelectorAll('.language-selector').forEach(langSelector => {
+                // Extract question ID from selector id (e.g., lang-coding-5 -> 5)
+                const editorId = langSelector.id.replace('lang-', 'editor-');
+                const editor = document.getElementById(editorId);
+                
+                langSelector.addEventListener('change', function() {
+                    const language = this.value;
+                    if (editor && codeTemplates[language]) {
+                        // Check if editor has only template code (or is empty)
+                        const currentValue = editor.value.trim();
+                        const isTemplate = currentValue === '' || 
+                                          Object.values(codeTemplates).some(t => t.trim() === currentValue);
+                        
+                        // Always replace if it's a template or empty
+                        if (isTemplate) {
+                            editor.value = codeTemplates[language];
+                            editor.focus();
+                        }
+                    }
+                });
+            });
+        }
+
+        function initializeCodeEditors() {
+            // Initialize all code editors
+            document.querySelectorAll('.code-editor').forEach(editor => {
+                initCodeEditor(editor);
+                
+                // For coding questions, set initial template
+                const editorId = editor.id;
+                if (editorId.includes('coding')) {
+                    // Extract language from selector
+                    const langSelectId = editorId.replace('editor-', 'lang-');
+                    const langSelector = document.getElementById(langSelectId);
+                    if (langSelector) {
+                        const language = langSelector.value;
+                        setEditorContent(editor, language, editor.value);
+                    }
+                }
+            });
+            
+            setupLanguageChangeHandlers();
+        }
+
+        // Initialize code editors when page is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeCodeEditors);
+        } else {
+            initializeCodeEditors();
+        }
     </script>
 
     <!-- Watermark -->
