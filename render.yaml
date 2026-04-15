@@ -3,10 +3,4 @@ services:
     name: quiz-platform
     runtime: docker
     plan: free
-    dockerfile: ./Dockerfile
-    dockerfilePath: ./Dockerfile
-    envVars:
-      - key: DEBUG
-        value: false
-      - key: PORT
-        value: 8000
+    healthCheckPath: /health/
