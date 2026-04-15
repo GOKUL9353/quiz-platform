@@ -1466,6 +1466,7 @@ def api_get_candidates(request, event_id, round_number):
                     'status': status,
                     'score': candidate.score if candidate.score else 0,
                     'total_questions': candidate.total_questions if candidate.total_questions else 0,
+                    'percentage': candidate.percentage if candidate.percentage else 0,
                     'time_taken': time_display,
                     'has_switched_tabs': candidate.has_switched_tabs,
                     'code_submissions': code_subs
