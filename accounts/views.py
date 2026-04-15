@@ -563,8 +563,7 @@ def submit_quiz(request):
     # Setup environment with Java path
     import os
     env = os.environ.copy()
-    home = os.path.expanduser('~')
-    java_home = os.path.join(home, '.jdk', 'jdk-11.0.15')
+    java_home = '/tmp/java'
     env['JAVA_HOME'] = java_home
     env['PATH'] = os.path.join(java_home, 'bin') + ':' + env.get('PATH', '')
 
@@ -990,8 +989,7 @@ def run_code(request):
 
     # Setup environment with Java path
     env = os.environ.copy()
-    home = os.path.expanduser('~')
-    java_home = os.path.join(home, '.jdk', 'jdk-11.0.15')
+    java_home = '/tmp/java'
     env['JAVA_HOME'] = java_home
     env['PATH'] = os.path.join(java_home, 'bin') + ':' + env.get('PATH', '')
 
