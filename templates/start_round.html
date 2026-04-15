@@ -346,6 +346,48 @@
         .pill-left { background: var(--danger-bg); color: var(--danger-text); }
         .pill-inactive { background: #F3F4F6; color: #6B7280; }
         
+        /* --- Score Breakdown Styling --- */
+        .score-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .score-main {
+            font-weight: 700;
+            color: #1e8e3e;
+            font-size: 15px;
+        }
+        
+        .score-details-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        
+        .score-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: default;
+        }
+        
+        .tag-tc { background: #E0F2FE; color: #0369A1; } /* Test Cases */
+        .tag-out { background: #DCFCE7; color: #15803D; } /* Output */
+        .tag-eff { background: #FEF3C7; color: #B45309; } /* Efficiency */
+        
+        .coding-detail-popover {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            background: #F9FAFB;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
         .round-status-badge {
             display: flex;
             align-items: center;
@@ -869,9 +911,33 @@
                 else if (candidate.status === 'Inactive') statusBadge = '<span class="status-pill pill-inactive"><span class="material-icons-outlined" style="font-size: 14px;">cloud_off</span>Inactive</span>';
                 else if (candidate.status === 'Left') statusBadge = '<span class="status-pill pill-left"><span class="material-icons-outlined" style="font-size: 14px;">close</span>Left</span>';
 
-                const scoreDisplay = candidate.is_submitted 
-                    ? `<div style="font-weight: 600; color: #1e8e3e;">${candidate.score}/${candidate.total_questions}</div>`
-                    : '<div style="color: var(--text-tertiary);">-</div>';
+                let scoreDisplay = '';
+                if (candidate.is_submitted) {
+                    let breakdownHtml = '';
+                    if (candidate.code_submissions && candidate.code_submissions.length > 0) {
+                        candidate.code_submissions.forEach(cs => {
+                            breakdownHtml += `
+                                <div class="coding-detail-popover">
+                                    <div style="font-weight:700; color:var(--text-main); margin-bottom:2px;">${cs.title || (cs.type + ' Q')}</div>
+                                    <div class="score-details-row">
+                                        <span class="score-tag tag-tc" title="Test Cases Passed">TC: ${cs.passed}/${cs.total} (${cs.tc_score}m)</span>
+                                        <span class="score-tag tag-out" title="Output Success">Out: ${cs.out_score}m</span>
+                                        <span class="score-tag tag-eff" title="Efficiency/Complexity">Eff: ${cs.eff_score}m (${cs.time_ms}ms)</span>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+
+                    scoreDisplay = `
+                        <div class="score-container">
+                            <div class="score-main">${candidate.score}/${candidate.total_questions}</div>
+                            ${breakdownHtml}
+                        </div>
+                    `;
+                } else {
+                    scoreDisplay = '<div style="color: var(--text-tertiary);">-</div>';
+                }
 
                 const timeDisplay = candidate.time_taken 
                     ? `<div style="font-size: 12px; color: var(--text-secondary);">${candidate.time_taken}</div>`
@@ -892,7 +958,7 @@
                     <td>
                         ${statusBadge}
                     </td>
-                    <td>
+                    <td style="min-width: 200px;">
                         ${scoreDisplay}
                     </td>
                     <td>

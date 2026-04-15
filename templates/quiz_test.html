@@ -1068,13 +1068,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                 </div>
-                <h2 class="modal-title">Completed</h2>
-                <p class="modal-subtitle">Your score report has been downloaded.</p>
+                <h2 class="modal-title">Assessment Completed</h2>
+                <p class="modal-subtitle">Your assessment has been evaluated.</p>
 
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-val"><span id="resScore">0</span>/<span id="resTotal">0</span></div>
-                        <div class="stat-lbl">Score</div>
+                        <div class="stat-val"><span id="resScore">0</span>/<span id="resMaxScore">0</span></div>
+                        <div class="stat-lbl">Total Score</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-val"><span id="resPercent">0</span>%</div>
@@ -1082,7 +1082,41 @@
                     </div>
                 </div>
 
-                <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="window.location.href='{% url 'login_choice' %}'">Return Home</button>
+                <!-- Detailed Score Breakdown -->
+                <div style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 8px; padding: 15px; margin-top: 20px; text-align: left;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 14px; color: #333; text-transform: uppercase; letter-spacing: 0.5px;">Score Breakdown</h3>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <span style="font-size: 13px; color: #555;">Test Cases Passed <span style="color: #999; font-size: 11px;"> (2 marks each)</span></span>
+                        <span style="font-weight: bold; color: #2196F3;" id="resTestCases">0/0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <span style="font-size: 13px; color: #555;">Output Score <span style="color: #999; font-size: 11px;"> (2 marks)</span></span>
+                        <span style="font-weight: bold; color: #4CAF50;" id="resOutputScore">0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e0e0e0;">
+                        <span style="font-size: 13px; color: #555;">Time/Space Complexity <span style="color: #999; font-size: 11px;"> (2 marks)</span></span>
+                        <span style="font-weight: bold; color: #FF9800;" id="resEffScore">0</span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                        <span style="font-size: 13px; color: #555;">Test Case Score <span style="color: #999; font-size: 11px;"> (total)</span></span>
+                        <span style="font-weight: bold; color: #9C27B0;" id="resTestCaseScore">0</span>
+                    </div>
+
+                    <hr style="margin: 15px 0; border: none; border-top: 2px solid #333;">
+                    
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                        <span style="font-size: 14px; font-weight: bold; color: #000;">Total Score</span>
+                        <span style="font-weight: bold; font-size: 16px; color: #000;" id="resTotalScore">0</span>
+                    </div>
+
+                    <p style="font-size: 12px; color: #999; margin: 10px 0 0 0;">Score = (Test Cases × 2) + Output (2) + Efficiency (2)</p>
+                </div>
+
+                <button class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 20px;" onclick="window.location.href='{% url 'login_choice' %}'">Return Home</button>
             </div>
         </div>
     </div>
@@ -1839,6 +1873,27 @@
                     answers[k] = v;
                 }
             }
+            
+            // Collect coding answers manually since editors may not be in the form data if they aren't standard inputs or if they lack name attributes
+            document.querySelectorAll('.coding-question-card, .dubbing-question-card').forEach(card => {
+                const idAttr = card.id; // e.g. coding-1 or dubbing-1
+                if (!idAttr) return;
+                const parts = idAttr.split('-');
+                if (parts.length >= 2) {
+                    const qType = parts[0]; // 'coding' or 'dubbing'
+                    const qId = parts.slice(1).join('-'); // join in case there are hyphens in the ID
+                    const editor = document.getElementById(`editor-${qType}-${qId}`);
+                    const langEl = document.getElementById(`lang-${qType}-${qId}`);
+                    if (editor) {
+                        answers[`${qType}_code_${qId}`] = editor.value;
+                        console.log(`Collected ${qType} code for Q${qId}: ${editor.value.length} chars`);
+                    }
+                    if (langEl) {
+                        answers[`${qType}_lang_${qId}`] = langEl.value;
+                        console.log(`Collected ${qType} language for Q${qId}: ${langEl.value}`);
+                    }
+                }
+            });
 
             const totalTime = CONFIG.durationMinutes * 60;
             const timeTaken = totalTime - state.timeLeft;
@@ -1897,9 +1952,21 @@
             if (state.timerInterval) clearInterval(state.timerInterval);
             
             try {
-                document.getElementById('resScore').textContent = data.score || 0;
-                document.getElementById('resTotal').textContent = data.total_questions || 0;
-                document.getElementById('resPercent').textContent = Math.round((data.percentage || 0) * 10) / 10;
+                // Total score display
+                const totalScore = data.score || 0;
+                const maxScore = data.max_score || 0;
+                const percentage = data.percentage || 0;
+                
+                document.getElementById('resScore').textContent = totalScore;
+                document.getElementById('resMaxScore').textContent = maxScore;
+                document.getElementById('resPercent').textContent = Math.round(percentage * 100) / 100;
+                
+                // Score breakdown details
+                document.getElementById('resTestCases').textContent = (data.test_cases_passed || 0) + '/' + (data.test_cases_total || 0);
+                document.getElementById('resTestCaseScore').textContent = data.testcase_score || 0;
+                document.getElementById('resOutputScore').textContent = data.output_score || 0;
+                document.getElementById('resEffScore').textContent = data.efficiency_score || 0;
+                document.getElementById('resTotalScore').textContent = totalScore;
                 
                 els.stLoading.style.display = 'none';
                 els.stResult.style.display = 'block';

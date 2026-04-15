@@ -12,13 +12,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Security settings
-SECRET_KEY = os.environ.get('SECRET_KEY')
-#SECRET_KEY = "GOKUL-9353617108"
+#SECRET_KEY = os.environ.get('SECRET_KEY')
+SECRET_KEY = "GOKUL-9353617108"
 
 # Debug mode - Set to False for production, True for development
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['.onrender.com']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -59,6 +59,9 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
             ],
             'loaders': [
+                'django.template.loaders.filesystem.Loader',
+                'django.template.loaders.app_directories.Loader',
+            ] if DEBUG else [
                 ('django.template.loaders.cached.Loader', [
                     'django.template.loaders.filesystem.Loader',
                     'django.template.loaders.app_directories.Loader',
@@ -226,6 +229,10 @@ CSRF_COOKIE_HTTPONLY = True
 # Development settings
 if DEBUG:
     SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
     SECURE_SSL_REDIRECT = False
+    SECURE_HSTS_SECONDS = 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
     # Allow browsers to cache static files
     STATIC_DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

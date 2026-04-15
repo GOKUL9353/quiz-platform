@@ -48,6 +48,7 @@ class CandidateEntry(models.Model):
     is_waiting = models.BooleanField(default=True, db_index=True)
     is_submitted = models.BooleanField(default=False, db_index=True)
     score = models.IntegerField(default=0, null=True, blank=True)
+    percentage = models.FloatField(default=0.0, null=True, blank=True)  # Store percentage for admin display
     total_questions = models.IntegerField(default=0, null=True, blank=True)
     time_taken_seconds = models.IntegerField(default=0, null=True, blank=True)
     entry_time = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -170,3 +171,48 @@ class DubbingTestCase(models.Model):
 
     class Meta:
         ordering = ['order']
+
+
+class CodeSubmission(models.Model):
+    """Stores a candidate's final code submission for a coding/dubbing question with scoring details"""
+    QUESTION_TYPE_CHOICES = [
+        ('coding', 'Coding'),
+        ('dubbing', 'Debugging'),
+    ]
+
+    candidate = models.ForeignKey(
+        CandidateEntry, on_delete=models.CASCADE, related_name='code_submissions'
+    )
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPE_CHOICES, default='coding')
+    question_id = models.IntegerField()          # FK-less reference to CodingQuestion / DubbingQuestion
+    question_title = models.CharField(max_length=500, blank=True, default='')
+    code = models.TextField(blank=True, default='')
+    language = models.CharField(max_length=20, blank=True, default='python')
+
+    # Test-case metrics
+    passed_test_cases = models.IntegerField(default=0)
+    total_test_cases = models.IntegerField(default=0)
+
+    # Execution
+    output_success = models.BooleanField(default=False)   # True = code ran without errors
+    execution_time_ms = models.FloatField(default=0.0)    # avg ms across test cases
+    time_limit_met = models.BooleanField(default=False)   # True = avg < 1 000 ms
+
+    # Computed sub-scores
+    testcase_score = models.IntegerField(default=0)       # 2 × passed (max 2 if all pass)
+    output_score = models.IntegerField(default=0)         # 0 or 2
+    efficiency_score = models.IntegerField(default=0)     # 0 or 2
+    total_score = models.IntegerField(default=0)          # sum of above (max 6 per question)
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return (
+            f"{self.candidate.candidate_name} – "
+            f"{self.question_type} Q{self.question_id} "
+            f"({self.total_score} pts)"
+        )
+
+    class Meta:
+        ordering = ['submitted_at']
+        unique_together = [['candidate', 'question_type', 'question_id']]

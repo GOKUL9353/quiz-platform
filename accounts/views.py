@@ -636,10 +636,20 @@ def submit_quiz(request):
         total_questions = questions.count()
         percentage = (score / total_questions * 100) if total_questions > 0 else 0
 
+        # Initialize scoring breakdown variables
+        total_testcase_score = 0
+        total_output_score = 0
+        total_efficiency_score = 0
+        total_test_cases_passed = 0
+        total_test_cases = 0
+        total_max_possible_score = total_questions  # Start with MCQ max score
+
         # Mark candidate as submitted with score and time
         # Find the specific candidate entry that submitted (by name and round)
         try:
-            from .models import CandidateEntry
+            from .models import CandidateEntry, CodeSubmission, CodingQuestion, DubbingQuestion
+            import subprocess, tempfile, os, shutil, re, time
+            
             # Use more specific criteria to avoid updating wrong candidates
             candidate_entry = CandidateEntry.objects.filter(
                 round=round_obj,
@@ -649,20 +659,182 @@ def submit_quiz(request):
             ).first()
             
             if candidate_entry:
+                # === GRADE CODE SUBMISSIONS ===
+                def run_eval(code, language, test_cases, tmp_dir):
+                    if not code: return 0, 0, False, 0.0, False
+                    
+                    # prepare
+                    timeout = 5
+                    runner = None
+                    cmd_args = []
+                    compile_err = None
+                    if language == 'python':
+                        src = os.path.join(tmp_dir, 'solution.py')
+                        with open(src, 'w', encoding='utf-8') as f: f.write(code)
+                        runner, cmd_args = 'python', [src]
+                    elif language == 'c':
+                        src = os.path.join(tmp_dir, 'solution.c')
+                        exe = os.path.join(tmp_dir, 'solution.exe')
+                        with open(src, 'w', encoding='utf-8') as f: f.write(code)
+                        comp = subprocess.run(['gcc', src, '-o', exe, '-lm'], capture_output=True, text=True, timeout=15, cwd=tmp_dir)
+                        if comp.returncode != 0: compile_err = comp.stderr
+                        runner, cmd_args = 'exe', [exe]
+                    elif language == 'java':
+                        m = re.search(r'public\s+class\s+(\w+)', code)
+                        class_name = m.group(1) if m else 'Solution'
+                        src = os.path.join(tmp_dir, f'{class_name}.java')
+                        with open(src, 'w', encoding='utf-8') as f: f.write(code)
+                        comp = subprocess.run(['javac', src], capture_output=True, text=True, timeout=15, cwd=tmp_dir)
+                        if comp.returncode != 0: compile_err = comp.stderr
+                        runner, cmd_args = 'java', ['-cp', tmp_dir, class_name]
+                    
+                    if compile_err or not runner:
+                        return 0, len(test_cases), False, 0.0, False
+                        
+                    passed = 0
+                    total_time = 0.0
+                    output_success = False
+                    
+                    for tc in test_cases:
+                        clean_input = tc.input_data.replace('\r\n', '\n').replace('\r', '\n')
+                        if runner == 'python': cmd = ['python'] + cmd_args
+                        elif runner == 'exe': cmd = cmd_args
+                        elif runner == 'java': cmd = ['java'] + cmd_args
+                        
+                        start_t = time.time()
+                        try:
+                            res = subprocess.run(cmd, input=clean_input, capture_output=True, text=True, timeout=timeout, cwd=tmp_dir)
+                            elapsed = time.time() - start_t
+                            total_time += elapsed
+                            if res.returncode == 0:
+                                output_success = True
+                            actual = res.stdout.strip().replace('\r\n', '\n').replace('\r', '\n')
+                            expected = tc.expected_output.strip().replace('\r\n', '\n').replace('\r', '\n')
+                            if actual == expected and res.returncode == 0:
+                                passed += 1
+                        except subprocess.TimeoutExpired:
+                            total_time += timeout
+                    
+                    avg_time_ms = (total_time / len(test_cases) * 1000) if test_cases else 0.0
+                    time_met = avg_time_ms < 1000.0 if test_cases else False
+                    if not test_cases and runner: # if no testcases but compiles visually run once if we want to check output success
+                        pass
+                    return passed, len(test_cases), output_success, avg_time_ms, time_met
+
+                # Group coding answers by question_id
+                coding_subs = {}
+                dubbing_subs = {}
+                for k, v in answers.items():
+                    if k.startswith('coding_code_'):
+                        qid = int(k.split('_')[2])
+                        if qid not in coding_subs: coding_subs[qid] = {'code': v, 'lang': 'python'}
+                        else: coding_subs[qid]['code'] = v
+                    elif k.startswith('coding_lang_'):
+                        qid = int(k.split('_')[2])
+                        if qid not in coding_subs: coding_subs[qid] = {'lang': v, 'code': ''}
+                        else: coding_subs[qid]['lang'] = v
+                    elif k.startswith('dubbing_code_'):
+                        qid = int(k.split('_')[2])
+                        if qid not in dubbing_subs: dubbing_subs[qid] = {'code': v, 'lang': 'python'}
+                        else: dubbing_subs[qid]['code'] = v
+                    elif k.startswith('dubbing_lang_'):
+                        qid = int(k.split('_')[2])
+                        if qid not in dubbing_subs: dubbing_subs[qid] = {'lang': v, 'code': ''}
+                        else: dubbing_subs[qid]['lang'] = v
+
+                tmp_dir = tempfile.mkdtemp(prefix='quiz_submit_')
+                
+                try:
+                    def evaluate_and_save(q_dict, q_type, model_cls):
+                        nonlocal score, total_testcase_score, total_output_score, total_efficiency_score
+                        nonlocal total_test_cases_passed, total_test_cases, total_max_possible_score
+                        for qid, payload in q_dict.items():
+                            try:
+                                q_obj = model_cls.objects.get(id=qid)
+                                tcs = list(q_obj.test_cases.all())
+                                passed, total, out_ok, exec_ms, time_met = run_eval(payload['code'], payload['lang'], tcs, tmp_dir)
+                                
+                                # Scoring Logic
+                                # Test Cases: 2 marks per passing test case
+                                tc_marks = passed * 2
+                                
+                                # Output Success: 2 marks if output is correct
+                                out_marks = 2 if out_ok else 0
+                                
+                                # Efficiency: 2 marks if time limit met
+                                eff_marks = 2 if (time_met and passed > 0) else 0
+                                
+                                # Total: sum of all marks
+                                q_score = tc_marks + out_marks + eff_marks
+                                score += q_score
+                                
+                                # Max possible score for this question
+                                # = (test_cases * 2) + 2 (output) + 2 (efficiency)
+                                q_max_score = (total * 2) + 2 + 2
+                                total_max_possible_score += q_max_score
+                                
+                                # Accumulate breakdown scores
+                                total_testcase_score += tc_marks
+                                total_output_score += out_marks
+                                total_efficiency_score += eff_marks
+                                total_test_cases_passed += passed
+                                total_test_cases += total
+                                
+                                CodeSubmission.objects.create(
+                                    candidate=candidate_entry,
+                                    question_type=q_type,
+                                    question_id=qid,
+                                    question_title=q_obj.title,
+                                    code=payload['code'],
+                                    language=payload['lang'],
+                                    passed_test_cases=passed,
+                                    total_test_cases=total,
+                                    output_success=out_ok,
+                                    execution_time_ms=exec_ms,
+                                    time_limit_met=time_met,
+                                    testcase_score=tc_marks,
+                                    output_score=out_marks,
+                                    efficiency_score=eff_marks,
+                                    total_score=q_score
+                                )
+                            except model_cls.DoesNotExist:
+                                logger.warning(f"{q_type.capitalize()} question {qid} not found")
+                            except Exception as e:
+                                logger.error(f"Error evaluating {q_type} question {qid}: {str(e)}")
+
+                    evaluate_and_save(coding_subs, 'coding', CodingQuestion)
+                    evaluate_and_save(dubbing_subs, 'dubbing', DubbingQuestion)
+                finally:
+                    shutil.rmtree(tmp_dir, ignore_errors=True)
+
+                # Calculate percentage based on actual max possible score BEFORE saving
+                actual_percentage = (score / total_max_possible_score * 100) if total_max_possible_score > 0 else 0
+
                 candidate_entry.is_submitted = True
                 candidate_entry.score = score
-                candidate_entry.total_questions = total_questions
+                candidate_entry.percentage = actual_percentage  # Save percentage
+                candidate_entry.total_questions = total_max_possible_score  # Store max possible score for display
                 candidate_entry.time_taken_seconds = time_taken_seconds
-                candidate_entry.save(update_fields=['is_submitted', 'score', 'total_questions', 'time_taken_seconds'])
+                candidate_entry.save(update_fields=['is_submitted', 'score', 'percentage', 'total_questions', 'time_taken_seconds'])
         except Exception as e:
             logger.error(f"Error updating candidate submission: {str(e)}")
+
+        # Get counts for attended questions
+        num_coding = len(coding_subs) if 'coding_subs' in locals() else 0
+        num_dubbing = len(dubbing_subs) if 'dubbing_subs' in locals() else 0
 
         return JsonResponse({
             'success': True,
             'score': score,
             'total_questions': total_questions,
-            'attended': answered_count,
-            'percentage': percentage
+            'attended': answered_count + num_coding + num_dubbing if 'num_coding' in locals() else answered_count,
+            'percentage': actual_percentage,
+            'testcase_score': total_testcase_score,
+            'output_score': total_output_score,
+            'efficiency_score': total_efficiency_score,
+            'test_cases_passed': total_test_cases_passed,
+            'test_cases_total': total_test_cases,
+            'max_score': total_max_possible_score
         })
 
     except Event.DoesNotExist:
@@ -1026,7 +1198,7 @@ def start_round(request, event_id, round_number):
         all_candidates = CandidateEntry.objects.filter(
             round=round_obj,
             access_code_used=round_obj.access_code
-        ).order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
+        ).prefetch_related('code_submissions').order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
         
         # Create a list with candidate info including status
         current_time = timezone.now()
@@ -1216,7 +1388,7 @@ def api_get_candidates(request, event_id, round_number):
         all_candidates = CandidateEntry.objects.filter(
             round=round_obj,
             access_code_used=round_obj.access_code
-        ).order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
+        ).prefetch_related('code_submissions').order_by('-is_submitted', 'entry_time') if round_obj.access_code else CandidateEntry.objects.none()
         
         current_time = timezone.now()
         threshold_90s = current_time - timedelta(seconds=90)
@@ -1272,6 +1444,21 @@ def api_get_candidates(request, event_id, round_number):
                     secs = candidate.time_taken_seconds % 60
                     time_display = f"{mins}m {secs}s"
                 
+                # Fetch code submissions for this candidate
+                code_subs = []
+                for cs in candidate.code_submissions.all():
+                    code_subs.append({
+                        'type': cs.question_type,
+                        'title': cs.question_title,
+                        'passed': cs.passed_test_cases,
+                        'total': cs.total_test_cases,
+                        'tc_score': cs.testcase_score,
+                        'out_score': cs.output_score,
+                        'eff_score': cs.efficiency_score,
+                        'total_score': cs.total_score,
+                        'time_ms': round(cs.execution_time_ms, 2)
+                    })
+
                 candidates_data.append({
                     'id': candidate.id,
                     'name': candidate.candidate_name,
@@ -1280,7 +1467,8 @@ def api_get_candidates(request, event_id, round_number):
                     'score': candidate.score if candidate.score else 0,
                     'total_questions': candidate.total_questions if candidate.total_questions else 0,
                     'time_taken': time_display,
-                    'has_switched_tabs': candidate.has_switched_tabs
+                    'has_switched_tabs': candidate.has_switched_tabs,
+                    'code_submissions': code_subs
                 })
         else:
             # Before round starts (hosting): show all candidates who entered, with their status
