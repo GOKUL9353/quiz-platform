@@ -14,15 +14,14 @@ if [ ! -f $HOME/.jdk/jdk-11.0.15/bin/javac ]; then
     echo "Java installed successfully"
 fi
 
-# Set Java environment variables
+# Set Java environment variables - MUST EXPORT
 export JAVA_HOME=$HOME/.jdk/jdk-11.0.15
 export PATH=$JAVA_HOME/bin:$PATH
 
 # Verify Java installation
-echo "Java version:"
-java -version 2>&1 || echo "Java not found"
-echo "Javac version:"
-javac -version 2>&1 || echo "Javac not found"
+echo "Testing Java..."
+$JAVA_HOME/bin/java -version 2>&1
+$JAVA_HOME/bin/javac -version 2>&1
 
 # Install Python dependencies
 pip install --upgrade pip
