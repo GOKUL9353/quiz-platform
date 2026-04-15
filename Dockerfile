@@ -1,4 +1,4 @@
-# Start with official Python image with Java pre-installed
+# Start with official Python image
 FROM python:3.11-slim
 
 # Set working directory
@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     && rm -rf /var/lib/apt/lists/*
+
+# Verify Java installation
+RUN javac -version && java -version
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -29,4 +32,5 @@ RUN python manage.py collectstatic --noinput
 EXPOSE 8000
 
 # Run the application
-CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--timeout", "120"]
+

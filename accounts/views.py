@@ -684,7 +684,7 @@ def submit_quiz(request):
                         class_name = m.group(1) if m else 'Solution'
                         src = os.path.join(tmp_dir, f'{class_name}.java')
                         with open(src, 'w', encoding='utf-8') as f: f.write(code)
-                        comp = subprocess.run(['javac', src], capture_output=True, text=True, timeout=15, cwd=tmp_dir)
+                        comp = subprocess.run(['javac', src], capture_output=True, text=True, timeout=15, cwd=tmp_dir, env=os.environ.copy())
                         if comp.returncode != 0: compile_err = comp.stderr
                         runner, cmd_args = 'java', ['-cp', tmp_dir, class_name]
                     
@@ -703,7 +703,7 @@ def submit_quiz(request):
                         
                         start_t = time.time()
                         try:
-                            res = subprocess.run(cmd, input=clean_input, capture_output=True, text=True, timeout=timeout, cwd=tmp_dir)
+                            res = subprocess.run(cmd, input=clean_input, capture_output=True, text=True, timeout=timeout, cwd=tmp_dir, env=os.environ.copy())
                             elapsed = time.time() - start_t
                             total_time += elapsed
                             if res.returncode == 0:
@@ -1022,7 +1022,7 @@ def run_code(request):
                     f.write(code)
                 comp = subprocess.run(
                     ['javac', src],
-                    capture_output=True, text=True, timeout=30, cwd=tmp_dir
+                    capture_output=True, text=True, timeout=30, cwd=tmp_dir, env=os.environ.copy()
                 )
                 if comp.returncode != 0:
                     return (None, None, comp.stderr)
@@ -1043,7 +1043,7 @@ def run_code(request):
 
             result = subprocess.run(
                 cmd, input=stdin_data, capture_output=True, text=True,
-                timeout=TIMEOUT, cwd=tmp_dir
+                timeout=TIMEOUT, cwd=tmp_dir, env=os.environ.copy()
             )
             return result.stdout, result.stderr, result.returncode
 
