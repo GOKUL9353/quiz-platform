@@ -71,7 +71,7 @@
         /* Layout Grid */
         .app-layout {
             display: grid;
-            grid-template-columns: var(--w-sidebar) 1fr;
+            grid-template-columns: 1fr var(--w-sidebar);
             height: 100vh;
             width: 100vw;
             transition: filter 0.3s ease;
@@ -80,7 +80,7 @@
         /* Sidebar Styles */
         .sidebar {
             background: var(--bg-surface);
-            border-right: 1px solid var(--border-subtle);
+            border-left: 1px solid var(--border-subtle);
             display: flex;
             flex-direction: column;
             z-index: 20;
@@ -269,23 +269,18 @@
             border-radius: 4px;
         }
 
-        /* Scroll Area */
+        /* Scroll Area — no padding; coding cards fill edge-to-edge */
         .scroll-area {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
             scroll-behavior: smooth;
-            padding: 40px;
+            padding: 0;
             min-height: 0;
         }
 
-        /* Progress Bar (Optional Visual Flair) */
-        .scroll-area::-webkit-scrollbar {
-            width: 8px;
-        }
-        .scroll-area::-webkit-scrollbar-track {
-            background: transparent;
-        }
+        .scroll-area::-webkit-scrollbar { width: 8px; }
+        .scroll-area::-webkit-scrollbar-track { background: transparent; }
         .scroll-area::-webkit-scrollbar-thumb {
             background-color: #D1D5DB;
             border-radius: 20px;
@@ -293,10 +288,19 @@
             background-clip: content-box;
         }
 
+        /* MCQ wrapper gets its own padding */
         .quiz-wrapper {
-            max-width: 800px;
-            margin: 0 auto;
-            padding-bottom: 100px;
+            width: 100%;
+            margin: 0;
+        }
+        /* MCQ question cards get internal spacing */
+        .quiz-wrapper .question-card {
+            margin: 24px 24px 0 24px;
+            width: calc(100% - 48px);
+        }
+        /* Spacer after last MCQ card */
+        .quiz-mcq-spacer {
+            height: 40px;
         }
 
         /* Buttons */
@@ -349,12 +353,13 @@
             background: var(--bg-surface);
             border-radius: var(--radius-lg);
             padding: 0;
-            margin-bottom: 32px;
+            margin-bottom: 24px;
             border: 1px solid var(--border-subtle);
-            box-shadow: var(--shadow-card);
+            box-shadow: var(--shadow-sm);
             transition: all 0.3s var(--ease);
             overflow: hidden;
             position: relative;
+            width: 100%;
         }
 
         /* Accent Top Border */
@@ -371,7 +376,7 @@
         }
 
         .card-content {
-            padding: 40px;
+            padding: 48px;
         }
 
         .q-meta {
@@ -393,7 +398,7 @@
         }
 
         .q-text {
-            font-size: 1.125rem;
+            font-size: 1.35rem;
             line-height: 1.6;
             font-weight: 600;
             color: var(--text-main);
@@ -409,15 +414,21 @@
 
         .option-label {
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 18px 20px;
-            border-radius: 10px;
+            align-items: center;
+            gap: 20px;
+            padding: 24px 30px;
+            border-radius: 12px;
             border: 1px solid var(--border-subtle);
             background: #fff;
             cursor: pointer;
-            transition: all 0.2s var(--ease);
+            transition: all 0.25s var(--ease);
             position: relative;
+        }
+        
+        .option-label:hover {
+            border-color: var(--primary);
+            background: var(--primary-soft);
+            transform: translateX(4px);
         }
 
         .option-label.selected {
@@ -467,7 +478,7 @@
         }
 
         .option-text {
-            font-size: 0.9375rem;
+            font-size: 1.1rem;
             color: var(--text-main);
             line-height: 1.5;
             font-weight: 500;
@@ -606,6 +617,322 @@
             to { transform: rotate(360deg); }
         }
 
+        /* ══ LeetCode-style Coding IDE ══════════════════════════════════════╗
+           Full-height, 3-panel IDE: Problem | Editor | Tabbed Output        ║
+        ═══════════════════════════════════════════════════════════════════╝ */
+
+        /* Coding question card fills full viewport minus the header (80px) */
+        .coding-question-card {
+            height: calc(100vh - 80px);
+            max-height: calc(100vh - 80px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+            /* Bleed edge-to-edge, overriding any inherited padding */
+            width: 100%;
+            position: relative;
+        }
+
+        /* 3-column IDE grid */
+        .ide-layout {
+            display: grid;
+            grid-template-columns: 42% 58%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ── LEFT: Problem Panel ────────────────────────────────────────── */
+        .ide-problem {
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .ide-problem-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+            background: var(--bg-surface);
+        }
+        .prob-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .prob-badge-coding  { background: #fef3c7; color: #b45309; }
+        .prob-badge-dubbing { background: #ede9fe; color: #7c3aed; }
+        .ide-prob-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0;
+        }
+        .ide-problem-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .prob-section {
+            margin-bottom: 20px;
+        }
+        .prob-section-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        .prob-section p, .prob-section li {
+            font-size: 0.97rem;
+            line-height: 1.75;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .example-box {
+            background: var(--bg-subtle);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 14px 16px;
+        }
+        .example-box pre {
+            margin: 6px 0 0 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            white-space: pre-wrap;
+            color: var(--text-main);
+        }
+        .example-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        /* ── RIGHT: Editor + Output ─────────────────────────────────────── */
+        .ide-editor-zone {
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+            overflow: hidden;
+        }
+
+        /* Editor topbar */
+        .ide-editor-bar {
+            background: #2d2d2d;
+            border-bottom: 1px solid #333;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .language-selector {
+            background: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+        .ide-editor-bar-right {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Code editor area */
+        .code-editor {
+            flex: 1;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.9375rem;
+            padding: 20px;
+            border: none;
+            resize: none;
+            line-height: 1.65;
+            tab-size: 4;
+            min-height: 0;
+        }
+        .code-editor:focus { outline: none; }
+
+        /* ── Bottom Output Zone (tabbed) ────────────────────────────────── */
+        .ide-output-zone {
+            flex-shrink: 0;
+            height: 260px;
+            background: #252526;
+            border-top: 2px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Tab bar */
+        .ide-tab-bar {
+            background: #2d2d2d;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            border-bottom: 1px solid #333;
+            flex-shrink: 0;
+        }
+        .ide-tab {
+            padding: 8px 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #8c8c8c;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            background: none;
+            border-radius: 0;
+            user-select: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: inherit;
+        }
+        .ide-tab:hover { color: #d4d4d4; }
+        .ide-tab.active {
+            color: #fff;
+            border-bottom-color: var(--primary);
+        }
+        .ide-tab-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 8px;
+            padding: 0 12px;
+            align-items: center;
+        }
+
+        /* Tab panes */
+        .ide-tab-pane {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+        .ide-tab-pane.active { display: flex; flex-direction: column; gap: 8px; }
+
+        /* Custom test input */
+        .custom-stdin {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 10px;
+            resize: none;
+            height: 80px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .custom-stdin:focus { outline: none; border-color: var(--primary); }
+        .custom-output {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            padding: 10px;
+            border-radius: 6px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            min-height: 36px;
+            white-space: pre-wrap;
+            color: #10b981;
+        }
+
+        /* Test case results */
+        .tc-results-list { display: flex; flex-direction: column; gap: 6px; }
+        .tc-result-row {
+            display: grid;
+            grid-template-columns: 110px 1fr 1fr;
+            gap: 8px;
+            align-items: start;
+            font-size: 0.78rem;
+            background: rgba(255,255,255,0.04);
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+        .tc-label { font-weight: 700; }
+        .tc-pass  { color: #10b981; }
+        .tc-fail  { color: #f87171; }
+        .tc-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            color: #555;
+            font-size: 0.85rem;
+            gap: 8px;
+        }
+        .tc-summary {
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .tc-summary.all-pass { background: rgba(16,185,129,0.15); color: #10b981; }
+        .tc-summary.some-fail { background: rgba(248,113,113,0.15); color: #f87171; }
+
+        /* IDE Buttons */
+        .btn-run {
+            background: transparent;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            padding: 5px 14px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .btn-run:hover { border-color: #888; color: #fff; }
+        .btn-submit-code {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 5px 16px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .btn-submit-code:hover { background: var(--primary-dark); }
+        .btn-run:disabled, .btn-submit-code:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Spinning animation */
+        .spinning {
+            display: inline-block;
+            animation: spin-simple 0.8s linear infinite;
+        }
+        @keyframes spin-simple {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .app-layout {
@@ -616,7 +943,7 @@
             .sidebar {
                 flex-direction: row;
                 height: auto;
-                border-right: none;
+                border-left: none;
                 border-bottom: 1px solid var(--border-subtle);
                 padding: 12px;
                 overflow-x: auto;
@@ -630,7 +957,7 @@
                 gap: 12px;
                 background: transparent;
                 border: none;
-                border-right: 1px solid var(--border-subtle);
+                border-left: 1px solid var(--border-subtle);
             }
 
             .timer-label { display: none; }
@@ -656,6 +983,7 @@
             .top-bar { padding: 0 20px; height: 64px; }
             .scroll-area { padding: 20px; }
             .card-content { padding: 24px; }
+
         }
     </style>
 </head>
@@ -761,36 +1089,6 @@
 
     <!-- MAIN APP -->
     <div id="mainLayout" class="app-layout" style="filter: blur(8px); transform: scale(0.99);">
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <div class="timer-section">
-                <div class="timer-label">Time Remaining</div>
-                <div id="timerDisplay" class="timer-display">00:00</div>
-            </div>
-
-            <div class="nav-section">
-                <div class="nav-header">
-                    <span class="nav-title">Questions</span>
-                    <span class="nav-count">{{ total_questions }}</span>
-                </div>
-                <div class="nav-grid">
-                    {% for question in questions %}
-                        <a href="#q-{{ question.id }}" id="nav-{{ question.id }}" class="nav-item">
-                            {{ forloop.counter }}
-                        </a>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <div class="sidebar-footer">
-                <div class="user-avatar">{{ candidate_name|first|upper }}</div>
-                <div class="user-details">
-                    <div class="user-name">{{ candidate_name }}</div>
-                    <div class="user-role">Candidate</div>
-                </div>
-            </div>
-        </aside>
-
         <!-- CONTENT -->
         <main class="main-content">
             <header class="top-bar">
@@ -805,7 +1103,7 @@
 
             <div class="scroll-area">
                 <div class="quiz-wrapper">
-                    {% if questions %}
+                    {% if questions or coding_questions or dubbing_questions %}
                         <form id="quizForm" method="POST">
                             {% csrf_token %}
                             
@@ -829,6 +1127,211 @@
                                     </div>
                                 </div>
                             {% endfor %}
+                            {% if questions %}<div class="quiz-mcq-spacer"></div>{% endif %}
+
+                            <!-- ══ CODING QUESTIONS (LeetCode-style IDE) ══ -->
+                            {% for coding in coding_questions %}
+                            <div id="coding-{{ coding.id }}" class="coding-question-card">
+                                <div class="ide-layout">
+
+                                    <!-- ── LEFT: Problem Description ──────── -->
+                                    <div class="ide-problem">
+                                        <div class="ide-problem-header">
+                                            <span class="prob-badge prob-badge-coding">Coding</span>
+                                            <h3 class="ide-prob-title">{{ coding.title }}</h3>
+                                        </div>
+                                        <div class="ide-problem-body">
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Problem Statement</div>
+                                                <p>{{ coding.problem_statement|linebreaksbr }}</p>
+                                            </div>
+                                            {% if coding.input_format %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Input Format</div>
+                                                <p>{{ coding.input_format|linebreaksbr }}</p>
+                                            </div>
+                                            {% endif %}
+                                            {% if coding.output_format %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Output Format</div>
+                                                <p>{{ coding.output_format|linebreaksbr }}</p>
+                                            </div>
+                                            {% endif %}
+                                            {% if coding.constraints %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Constraints</div>
+                                                <p>{{ coding.constraints|linebreaksbr }}</p>
+                                            </div>
+                                            {% endif %}
+                                            {% if coding.sample_input or coding.sample_output %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Example</div>
+                                                <div class="example-row">
+                                                    {% if coding.sample_input %}
+                                                    <div class="example-box">
+                                                        <div class="prob-section-label">Input</div>
+                                                        <pre>{{ coding.sample_input }}</pre>
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if coding.sample_output %}
+                                                    <div class="example-box">
+                                                        <div class="prob-section-label">Output</div>
+                                                        <pre>{{ coding.sample_output }}</pre>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- ── RIGHT: Editor + Tabbed Output ─── -->
+                                    <div class="ide-editor-zone">
+
+                                        <!-- Editor toolbar -->
+                                        <div class="ide-editor-bar">
+                                            <select class="language-selector" name="coding_lang_{{ coding.id }}" id="lang-coding-{{ coding.id }}">
+                                                <option value="c">C</option>
+                                                <option value="python">Python</option>
+                                                <option value="java">Java</option>
+                                            </select>
+                                            <div class="ide-editor-bar-right">
+                                                <button type="button" class="btn-run" onclick="runCustomCode('{{ coding.id }}', 'coding')">
+                                                    ▶ Run
+                                                </button>
+                                                <button type="button" class="btn-submit-code" onclick="submitCodeBtn('{{ coding.id }}', 'coding')">
+                                                    Submit
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Code editor -->
+                                        <textarea class="code-editor" id="editor-coding-{{ coding.id }}" name="coding_answer_{{ coding.id }}" placeholder="// Write your solution here..." spellcheck="false"></textarea>
+
+                                        <!-- Tabbed output zone -->
+                                        <div class="ide-output-zone">
+                                            <div class="ide-tab-bar">
+                                                <button type="button" class="ide-tab active" onclick="switchTab('{{ coding.id }}', 'test', this)">Test</button>
+                                                <button type="button" class="ide-tab" onclick="switchTab('{{ coding.id }}', 'results', this)">Test Cases</button>
+                                            </div>
+
+                                            <!-- Test tab: custom stdin -->
+                                            <div class="ide-tab-pane active" id="tab-test-{{ coding.id }}">
+                                                <label style="color:#888;font-size:0.75rem;font-weight:600;">STDIN (custom input):</label>
+                                                <textarea class="custom-stdin" id="stdin-{{ coding.id }}" placeholder="Enter custom input here to test manually..." spellcheck="false"></textarea>
+                                                <div style="display:flex;align-items:center;gap:10px;">
+                                                    <button type="button" class="btn-run" onclick="runCustomCode('{{ coding.id }}', 'coding')" id="run-btn-{{ coding.id }}">▶ Run</button>
+                                                    <span id="run-status-{{ coding.id }}" style="font-size:0.78rem;color:#888;"></span>
+                                                </div>
+                                                <pre class="custom-output" id="custom-out-{{ coding.id }}" style="display:none;"></pre>
+                                            </div>
+
+                                            <!-- Test Cases tab: auto-grading results -->
+                                            <div class="ide-tab-pane" id="tab-results-{{ coding.id }}">
+                                                <div class="tc-placeholder" id="tc-placeholder-{{ coding.id }}">
+                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    Click <strong style="color:#888;margin:0 4px;">Submit</strong> to run against all test cases
+                                                </div>
+                                                <div id="tc-results-{{ coding.id }}" style="display:none;flex-direction:column;gap:6px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+
+                            <!-- ══ DUBBING QUESTIONS ══ -->
+                            {% for dubbing in dubbing_questions %}
+                            <div id="dubbing-{{ dubbing.id }}" class="coding-question-card">
+                                <div class="ide-layout">
+
+                                    <!-- LEFT: Problem Description -->
+                                    <div class="ide-problem">
+                                        <div class="ide-problem-header">
+                                            <span class="prob-badge prob-badge-dubbing">Debug</span>
+                                            <h3 class="ide-prob-title">{{ dubbing.title }}</h3>
+                                        </div>
+                                        <div class="ide-problem-body">
+                                            {% if dubbing.description %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Instructions</div>
+                                                <p>{{ dubbing.description|linebreaksbr }}</p>
+                                            </div>
+                                            {% endif %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Code Snippet ({{ dubbing.language|upper }})</div>
+                                                <div class="example-box">
+                                                    <pre>{{ dubbing.code_snippet }}</pre>
+                                                </div>
+                                            </div>
+
+                                            {% if dubbing.sample_input or dubbing.sample_output %}
+                                            <div class="prob-section">
+                                                <div class="prob-section-label">Example</div>
+                                                <div class="example-row">
+                                                    {% if dubbing.sample_input %}
+                                                    <div class="example-box">
+                                                        <div class="prob-section-label">Input</div>
+                                                        <pre>{{ dubbing.sample_input }}</pre>
+                                                    </div>
+                                                    {% endif %}
+                                                    {% if dubbing.sample_output %}
+                                                    <div class="example-box">
+                                                        <div class="prob-section-label">Output</div>
+                                                        <pre>{{ dubbing.sample_output }}</pre>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <!-- RIGHT: Editor + Tabbed Output -->
+                                    <div class="ide-editor-zone">
+                                        <div class="ide-editor-bar">
+                                            <span style="color:#8c8c8c;font-size:0.82rem;font-weight:600;">{{ dubbing.language|upper }}</span>
+                                            <input type="hidden" id="lang-dubbing-{{ dubbing.id }}" name="dubbing_lang_{{ dubbing.id }}" value="{{ dubbing.language }}">
+                                            <div class="ide-editor-bar-right">
+                                                <button type="button" class="btn-run" onclick="runCustomCode('{{ dubbing.id }}', 'dubbing')">
+                                                    ▶ Run
+                                                </button>
+                                                <button type="button" class="btn-submit-code" onclick="submitCodeBtn('{{ dubbing.id }}', 'dubbing')">
+                                                    Submit
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <textarea class="code-editor" id="editor-dubbing-{{ dubbing.id }}" name="dubbing_answer_{{ dubbing.id }}" spellcheck="false">{{ dubbing.code_snippet }}</textarea>
+
+                                        <div class="ide-output-zone">
+                                            <div class="ide-tab-bar">
+                                                <button type="button" class="ide-tab active" onclick="switchTab('{{ dubbing.id }}', 'test', this)">Test</button>
+                                                <button type="button" class="ide-tab" onclick="switchTab('{{ dubbing.id }}', 'results', this)">Test Cases</button>
+                                            </div>
+                                            <div class="ide-tab-pane active" id="tab-test-{{ dubbing.id }}">
+                                                <label style="color:#888;font-size:0.75rem;font-weight:600;">STDIN (custom input):</label>
+                                                <textarea class="custom-stdin" id="stdin-{{ dubbing.id }}" placeholder="Enter custom input here..." spellcheck="false"></textarea>
+                                                <div style="display:flex;align-items:center;gap:10px;">
+                                                    <button type="button" class="btn-run" onclick="runCustomCode('{{ dubbing.id }}', 'dubbing')" id="run-btn-{{ dubbing.id }}">▶ Run</button>
+                                                    <span id="run-status-{{ dubbing.id }}" style="font-size:0.78rem;color:#888;"></span>
+                                                </div>
+                                                <pre class="custom-output" id="custom-out-{{ dubbing.id }}" style="display:none;"></pre>
+                                            </div>
+
+                                            <!-- Test Cases tab: auto-grading results -->
+                                            <div class="ide-tab-pane" id="tab-results-{{ dubbing.id }}">
+                                                <div class="tc-placeholder" id="tc-placeholder-{{ dubbing.id }}">
+                                                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                    Click <strong style="color:#888;margin:0 4px;">Submit</strong> to run against all test cases
+                                                </div>
+                                                <div id="tc-results-{{ dubbing.id }}" style="display:none;flex-direction:column;gap:6px;"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+
                         </form>
                     {% else %}
                         <div style="text-align: center; padding: 60px; color: var(--text-muted);">
@@ -838,6 +1341,50 @@
                 </div>
             </div>
         </main>
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="timer-section">
+                <div class="timer-label">Time Remaining</div>
+                <div id="timerDisplay" class="timer-display">00:00</div>
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-header">
+                    <span class="nav-title">Questions</span>
+                    <span class="nav-count">{{ total_questions }}</span>
+                </div>
+                <div class="nav-grid">
+                    {% with mcq_len=questions|length code_len=coding_questions|length %}
+                    {% for question in questions %}
+                        <a href="#q-{{ question.id }}" id="nav-{{ question.id }}" class="nav-item" title="MCQ {{ forloop.counter }}">
+                            {{ forloop.counter }}
+                        </a>
+                    {% endfor %}
+                    {% for coding in coding_questions %}
+                        <a href="#coding-{{ coding.id }}" id="nav-coding-{{ coding.id }}" class="nav-item" title="Coding Q{{ forloop.counter }}">
+                            {{ forloop.counter|add:mcq_len }}
+                        </a>
+                    {% endfor %}
+                    {% for dubbing in dubbing_questions %}
+                        {% with offset=mcq_len|add:code_len %}
+                        <a href="#dubbing-{{ dubbing.id }}" id="nav-dubbing-{{ dubbing.id }}" class="nav-item" title="Debugging Q{{ forloop.counter }}">
+                            {{ forloop.counter|add:offset }}
+                        </a>
+                        {% endwith %}
+                    {% endfor %}
+                    {% endwith %}
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="user-avatar">{{ candidate_name|first|upper }}</div>
+                <div class="user-details">
+                    <div class="user-name">{{ candidate_name }}</div>
+                    <div class="user-role">Candidate</div>
+                </div>
+            </div>
+        </aside>
     </div>
 
     <!-- JAVASCRIPT -->
@@ -1047,6 +1594,220 @@
             label.classList.add('selected');
             const nav = document.getElementById(`nav-${qId}`);
             if (nav) nav.classList.add('answered');
+        }
+
+        // ── Switch IDE tabs ──────────────────────────────────────────────
+        function switchTab(id, tabName, clickedBtn) {
+            const zone = document.getElementById(`tab-test-${id}`)?.closest('.ide-output-zone');
+            if (!zone) return;
+            zone.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
+            zone.querySelectorAll('.ide-tab-pane').forEach(p => p.classList.remove('active'));
+            clickedBtn.classList.add('active');
+            const pane = document.getElementById(`tab-${tabName}-${id}`);
+            if (pane) pane.classList.add('active');
+        }
+
+        // ── Run with custom stdin ────────────────────────────────────────
+        function runCustomCode(id, type) {
+            const editor   = document.getElementById(`editor-${type}-${id}`);
+            const stdinEl  = document.getElementById(`stdin-${id}`);
+            const outEl    = document.getElementById(`custom-out-${id}`);
+            const statusEl = document.getElementById(`run-status-${id}`);
+            const runBtn   = document.getElementById(`run-btn-${id}`);
+            const langEl   = document.getElementById(`lang-${type}-${id}`);
+
+            const code   = editor ? editor.value.trim() : '';
+            const stdin  = stdinEl ? stdinEl.value : '';
+            const language = langEl ? langEl.value : (type === 'dubbing' ? 'python' : 'python');
+
+            if (!code) {
+                if (outEl) { outEl.style.display='block'; outEl.style.color='#f87171'; outEl.textContent='⚠ Write some code first.'; }
+                return;
+            }
+
+            if (statusEl) { statusEl.innerHTML = '<span class="spinning">⟳</span> Running...'; statusEl.style.color='#eab308'; }
+            if (runBtn)   { runBtn.disabled = true; }
+            if (outEl)    { outEl.style.display='none'; }
+
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+            fetch('/api/run-code/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.value : '' },
+                body: JSON.stringify({ language, code, stdin, question_id: id, question_type: type })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (runBtn) runBtn.disabled = false;
+                if (outEl) { outEl.style.display = 'block'; }
+                if (data.success) {
+                    if (statusEl) { statusEl.textContent = '✓ Done'; statusEl.style.color = '#10b981'; }
+                    if (outEl) { outEl.style.color = '#10b981'; outEl.textContent = data.output || '(no output)'; }
+                } else {
+                    if (statusEl) { statusEl.textContent = '✗ Error'; statusEl.style.color = '#f87171'; }
+                    if (outEl) { outEl.style.color = '#f87171'; outEl.textContent = data.output || data.error || 'Runtime error'; }
+                }
+                // navigate nav to answered
+                const navId = type === 'coding' ? `nav-coding-${id}` : `nav-dubbing-${id}`;
+                const nav = document.getElementById(navId);
+                if (nav) nav.classList.add('answered');
+            })
+            .catch(err => {
+                if (runBtn) runBtn.disabled = false;
+                if (statusEl) { statusEl.textContent = '✗ ' + err.message; statusEl.style.color = '#f87171'; }
+            });
+        }
+
+        // ── Submit code → run against test cases ─────────────────────────
+        function submitCodeBtn(id, type) {
+            const editor  = document.getElementById(`editor-${type}-${id}`);
+            const langEl  = document.getElementById(`lang-${type}-${id}`);
+            const resultsEl   = document.getElementById(`tc-results-${id}`);
+            const placeholderEl = document.getElementById(`tc-placeholder-${id}`);
+
+            const code     = editor ? editor.value.trim() : '';
+            const language = langEl ? langEl.value : 'python';
+
+            if (!code) return;
+
+            // Switch to results tab
+            const zone = document.getElementById(`tab-results-${id}`)?.closest('.ide-output-zone');
+            if (zone) {
+                zone.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
+                zone.querySelectorAll('.ide-tab-pane').forEach(p => p.classList.remove('active'));
+                const resultTab = zone.querySelector('.ide-tab:nth-child(2)');
+                if (resultTab) resultTab.classList.add('active');
+                const resultPane = document.getElementById(`tab-results-${id}`);
+                if (resultPane) resultPane.classList.add('active');
+            }
+
+            if (placeholderEl) { placeholderEl.style.display='flex'; placeholderEl.innerHTML = '<span class="spinning">⟳</span>&nbsp;Running test cases...'; }
+            if (resultsEl) resultsEl.style.display = 'none';
+
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+            fetch('/api/run-code/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.value : '' },
+                body: JSON.stringify({ language, code, question_id: id, question_type: type })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.mode === 'test_cases') {
+                    if (placeholderEl) placeholderEl.style.display = 'none';
+                    if (resultsEl) {
+                        resultsEl.style.display = 'flex';
+                        let html = `<div class="tc-summary ${data.success ? 'all-pass' : 'some-fail'}">`;
+                        html += data.success
+                            ? `✅ All ${data.total} test cases passed!`
+                            : `❌ ${data.passed}/${data.total} passed`;
+                        html += '</div>';
+                        data.results.forEach(res => {
+                            html += `<div class="tc-result-row">
+                                <span class="tc-label ${res.passed ? 'tc-pass' : 'tc-fail'}">${res.passed ? '✓' : '✗'} Case ${res.order}</span>
+                                <span style="color:#888;">${res.passed ? '' : 'Expected: <code style="color:#10b981">' + (res.expected||'-') + '</code>'}</span>
+                                <span style="color:#888;">${res.passed ? '' : 'Got: <code style="color:#f87171">' + (res.actual||'-') + '</code>'}</span>
+                            </div>`;
+                        });
+                        resultsEl.innerHTML = html;
+                    }
+                } else {
+                    if (placeholderEl) { placeholderEl.style.display='flex'; placeholderEl.textContent = data.output || data.error || 'No test cases for this question.'; }
+                }
+                const navId = type === 'coding' ? `nav-coding-${id}` : `nav-dubbing-${id}`;
+                const nav = document.getElementById(navId);
+                if (nav) nav.classList.add('answered');
+            })
+            .catch(err => {
+                if (placeholderEl) { placeholderEl.style.display='flex'; placeholderEl.style.color='#f87171'; placeholderEl.textContent='❌ ' + err.message; }
+            });
+        }
+
+        // ── Legacy wrapper (kept for old inline calls if any) ────────────
+        function runCode(btn, id, type) {
+            const container = btn.closest('.coding-question-card');
+            const outputPanel = container.querySelector('.output-panel');
+            const consoleOutput = container.querySelector('.console-output');
+            const editor = container.querySelector('.code-editor');
+            const langSelect = container.querySelector('.language-selector');
+
+            const code = editor ? editor.value.trim() : '';
+            const language = langSelect ? langSelect.value : (type === 'dubbing' ? 'python' : 'python');
+
+            if (!code) {
+                outputPanel.style.display = 'block';
+                consoleOutput.style.color = '#f87171';
+                consoleOutput.textContent = '⚠ No code to run. Write your code first.';
+                return;
+            }
+
+            outputPanel.style.display = 'block';
+            consoleOutput.style.color = '#eab308';
+            consoleOutput.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><span class="spinning">⏳</span> Running against test cases...</div>';
+            btn.disabled = true;
+            btn.textContent = 'Running...';
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+
+            fetch('/api/run-code/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken ? csrfToken.value : ''
+                },
+                body: JSON.stringify({ language, code, question_id: id, question_type: type })
+            })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                btn.textContent = 'Run Code';
+                
+                if (data.mode === 'test_cases') {
+                    // Render Test Case Results
+                    let html = `<div style="margin-bottom:12px; font-weight:700; color:${data.success ? '#10b981' : '#f87171'}">`;
+                    html += `${data.success ? '✅ All Test Cases Passed!' : `❌ Failed ${data.total - data.passed} of ${data.total} Test Cases`}</div>`;
+                    
+                    html += '<div style="display:flex; flex-direction:column; gap:8px;">';
+                    data.results.forEach(res => {
+                        html += `
+                            <div style="background:rgba(255,255,255,0.05); border-radius:6px; padding:10px; border-left:4px solid ${res.passed ? '#10b981' : '#f87171'}">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                                    <span style="font-size:0.8rem; font-weight:600; color:rgba(255,255,255,0.6)">Test Case ${res.order}</span>
+                                    <span style="font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:4px; background:${res.passed ? 'rgba(16,185,129,0.2)' : 'rgba(248,113,113,0.2)'}; color:${res.passed ? '#10b981' : '#f87171'}">
+                                        ${res.passed ? 'PASSED' : 'FAILED'}
+                                    </span>
+                                </div>
+                                ${!res.passed ? `
+                                    <div style="font-size:0.75rem; display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px;">
+                                        <div><div style="opacity:0.5">Expected:</div><code style="color:#10b981">${res.expected || '(empty)'}</code></div>
+                                        <div><div style="opacity:0.5">Actual:</div><code style="color:#f87171">${res.actual || '(empty)'}</code></div>
+                                    </div>
+                                ` : ''}
+                            </div>`;
+                    });
+                    html += '</div>';
+                    consoleOutput.innerHTML = html;
+                    consoleOutput.style.color = '#e2e8f0';
+                } else {
+                    // Simple output (Dubbing or no test cases)
+                    if (data.success) {
+                        consoleOutput.style.color = '#10b981';
+                        consoleOutput.textContent = data.output || '(no output)';
+                    } else {
+                        consoleOutput.style.color = '#f87171';
+                        consoleOutput.textContent = data.output || data.error || 'Runtime error';
+                    }
+                }
+
+                // Mark as visited in nav
+                const navId = type === 'coding' ? `nav-coding-${id}` : `nav-dubbing-${id}`;
+                const nav = document.getElementById(navId);
+                if (nav) nav.classList.add('answered');
+            })
+            .catch(err => {
+                btn.disabled = false;
+                btn.textContent = 'Run Code';
+                consoleOutput.style.color = '#f87171';
+                consoleOutput.textContent = '❌ Error: ' + err.message;
+            });
         }
 
         function showSubmissionModal() {

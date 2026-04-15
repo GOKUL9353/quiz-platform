@@ -512,11 +512,117 @@
         .alert-success { background: var(--primary-100); color: var(--primary-800); }
         .alert-error { background: var(--danger-bg); color: var(--danger); }
 
+        /* --- QUESTION TYPE CHOOSER --- */
+        .qtype-chooser {
+            display: flex;
+            gap: 14px;
+            margin-bottom: 0;
+        }
+
+        .qtype-btn {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 22px 12px;
+            border-radius: 12px;
+            border: 2px solid var(--neutral-200);
+            background: var(--white);
+            cursor: pointer;
+            transition: all 0.22s cubic-bezier(.4,0,.2,1);
+            font-family: var(--font-body);
+        }
+        .qtype-btn:hover {
+            border-color: var(--primary-600);
+            background: #f0fdf4;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5,150,105,0.12);
+        }
+        .qtype-btn.active {
+            border-color: var(--primary-600);
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+            box-shadow: 0 4px 14px rgba(5,150,105,0.18);
+        }
+        .qtype-btn .qtype-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            transition: background 0.2s;
+        }
+        .qtype-btn[data-type="mcq"] .qtype-icon  { background: #dbeafe; color: #1d4ed8; }
+        .qtype-btn[data-type="coding"] .qtype-icon { background: #fef3c7; color: #b45309; }
+        .qtype-btn[data-type="dubbing"] .qtype-icon { background: #ede9fe; color: #7c3aed; }
+        .qtype-btn.active[data-type="mcq"] .qtype-icon    { background: #bfdbfe; }
+        .qtype-btn.active[data-type="coding"] .qtype-icon  { background: #fde68a; }
+        .qtype-btn.active[data-type="dubbing"] .qtype-icon { background: #ddd6fe; }
+        .qtype-btn .qtype-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--neutral-600);
+            text-align: center;
+            line-height: 1.3;
+        }
+        .qtype-btn.active .qtype-label { color: var(--primary-800); }
+
+        /* --- QUESTION FORMS (hidden by default) --- */
+        .qform-panel { display: none; }
+        .qform-panel.visible { display: block; }
+
+        /* Coding / Dubbing form helpers */
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .code-textarea {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.88rem;
+            min-height: 200px;
+            background: #1e293b;
+            color: #e2e8f0;
+            border-color: #334155;
+            border-radius: 8px;
+            padding: 14px 16px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+        .code-textarea:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+        select.form-input { cursor: pointer; }
+
+        /* Language chips in dubbing bank */
+        .lang-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #ede9fe;
+            color: #7c3aed;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        /* Type chips in bank */
+        .type-chip-mcq     { background:#dbeafe; color:#1d4ed8; }
+        .type-chip-coding  { background:#fef3c7; color:#b45309; }
+        .type-chip-dubbing { background:#ede9fe; color:#7c3aed; }
+        .type-chip {
+            font-size: 0.72rem; font-weight:700; padding:2px 9px;
+            border-radius:20px; text-transform:uppercase; letter-spacing:0.04em;
+        }
+
         /* --- RESPONSIVE --- */
         @media (max-width: 1024px) {
             .sidebar { display: none; }
             .main-content { margin-left: 0; width: 100%; padding: 20px; }
             .editor-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -598,26 +704,66 @@
             
             <!-- LEFT COLUMN: Question Management -->
             <div class="left-panel">
-                
-                <!-- Add Question Form -->
+
+                <!-- ── STEP 1: TYPE CHOOSER CARD ── -->
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title">
                             <span class="material-symbols-rounded" style="color: var(--primary-600);">add_circle</span>
-                            Create Question
+                            Add Question
                         </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="qtype-chooser">
+
+                            <!-- MCQ -->
+                            <button class="qtype-btn" id="btn-mcq" data-type="mcq" onclick="showForm('mcq')">
+                                <div class="qtype-icon">
+                                    <span class="material-symbols-rounded">quiz</span>
+                                </div>
+                                <span class="qtype-label">Add MCQ<br>Question</span>
+                            </button>
+
+                            <!-- Coding -->
+                            <button class="qtype-btn" id="btn-coding" data-type="coding" onclick="showForm('coding')">
+                                <div class="qtype-icon">
+                                    <span class="material-symbols-rounded">code</span>
+                                </div>
+                                <span class="qtype-label">Add Coding<br>Question</span>
+                            </button>
+
+                            <!-- Dubbing -->
+                            <button class="qtype-btn" id="btn-dubbing" data-type="dubbing" onclick="showForm('dubbing')">
+                                <div class="qtype-icon">
+                                    <span class="material-symbols-rounded">integration_instructions</span>
+                                </div>
+                                <span class="qtype-label">Add Dubbing<br>Question</span>
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── STEP 2a: MCQ FORM ── -->
+                <div class="card qform-panel" id="form-mcq">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color:#1d4ed8;">quiz</span>
+                            MCQ Question
+                        </span>
+                        <button onclick="hideAllForms()" style="background:none;border:none;cursor:pointer;color:var(--neutral-400);">
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{% url 'add_question' event.id round_number %}">
                             {% csrf_token %}
-                            
                             <div class="form-group">
                                 <label class="form-label">Question Text</label>
-                                <textarea name="question_text" class="form-input" placeholder="Type the question clearly..." required></textarea>
+                                <textarea name="question_text" class="form-input" placeholder="Type the question clearly..." required style="min-height:100px;"></textarea>
                             </div>
-
                             <div class="form-group">
-                                <label class="form-label">Options (Select the correct answer)</label>
+                                <label class="form-label">Options <span style="font-weight:400;color:var(--neutral-400);">(select the correct answer)</span></label>
                                 <div class="options-list">
                                     <!-- Option A -->
                                     <div class="option-item">
@@ -628,50 +774,271 @@
                                             <span class="radio-circle"></span>
                                         </label>
                                     </div>
-                                    
                                     <!-- Option B -->
                                     <div class="option-item">
                                         <div class="opt-id">B</div>
                                         <input type="text" name="option_2" class="form-input" placeholder="Option B" required>
                                         <label class="radio-wrapper" title="Correct Answer">
-                                            <input type="radio" name="correct_option" value="2" required>
+                                            <input type="radio" name="correct_option" value="2">
                                             <span class="radio-circle"></span>
                                         </label>
                                     </div>
-
                                     <!-- Option C -->
                                     <div class="option-item">
                                         <div class="opt-id">C</div>
                                         <input type="text" name="option_3" class="form-input" placeholder="Option C" required>
                                         <label class="radio-wrapper" title="Correct Answer">
-                                            <input type="radio" name="correct_option" value="3" required>
+                                            <input type="radio" name="correct_option" value="3">
                                             <span class="radio-circle"></span>
                                         </label>
                                     </div>
-
                                     <!-- Option D -->
                                     <div class="option-item">
                                         <div class="opt-id">D</div>
                                         <input type="text" name="option_4" class="form-input" placeholder="Option D" required>
                                         <label class="radio-wrapper" title="Correct Answer">
-                                            <input type="radio" name="correct_option" value="4" required>
+                                            <input type="radio" name="correct_option" value="4">
                                             <span class="radio-circle"></span>
                                         </label>
                                     </div>
                                 </div>
                             </div>
-
-                            <div style="display: flex; justify-content: flex-end;">
+                            <div style="display:flex;justify-content:flex-end;">
                                 <button type="submit" class="btn btn-primary">
                                     <span class="material-symbols-rounded">save</span>
-                                    Save Question
+                                    Save MCQ
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- Question List -->
+                <!-- ── STEP 2b: CODING QUESTION FORM ── -->
+                <div class="card qform-panel" id="form-coding">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color:#b45309;">code</span>
+                            Coding Question
+                        </span>
+                        <button onclick="hideAllForms()" style="background:none;border:none;cursor:pointer;color:var(--neutral-400);">
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'add_coding_question' event.id round_number %}">
+                            {% csrf_token %}
+
+                            <div class="form-group">
+                                <label class="form-label">Problem Title</label>
+                                <input type="text" name="title" class="form-input" placeholder="e.g. Two Sum, Fibonacci Series..." required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Problem Statement</label>
+                                <textarea name="problem_statement" class="form-input" placeholder="Describe the problem in detail. What should the candidate solve?" required style="min-height:130px;"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Input Format</label>
+                                    <textarea name="input_format" class="form-input" placeholder="Describe the input format..." style="min-height:90px;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Output Format</label>
+                                    <textarea name="output_format" class="form-input" placeholder="Describe the expected output format..." style="min-height:90px;"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Constraints</label>
+                                <textarea name="constraints" class="form-input" placeholder="e.g. 1 ≤ N ≤ 10⁵, time limit 1s..." style="min-height:70px;"></textarea>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Sample Input</label>
+                                    <textarea name="sample_input" class="form-input" placeholder="5&#10;1 2 3 4 5" style="min-height:90px;"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Sample Output</label>
+                                    <textarea name="sample_output" class="form-input" placeholder="15" style="min-height:90px;"></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Test Cases Section -->
+                            <div class="form-group" style="margin-top: 8px;">
+                                <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+                                    <span class="material-symbols-rounded" style="font-size:20px;color:#b45309;">science</span>
+                                    Test Cases
+                                    <span style="font-weight:400;color:var(--neutral-400);font-size:0.8rem;">(at least 1 required for auto-grading)</span>
+                                </label>
+                                <div id="test-cases-container" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+                                    <!-- 5 test case rows by default -->
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">1</span>
+                                        <textarea name="tc_input_1" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_1" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">2</span>
+                                        <textarea name="tc_input_2" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_2" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">3</span>
+                                        <textarea name="tc_input_3" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_3" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">4</span>
+                                        <textarea name="tc_input_4" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_4" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">5</span>
+                                        <textarea name="tc_input_5" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_5" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="addTestCaseRow('test-cases-container')" style="margin-top:10px;background:none;border:1px dashed var(--neutral-200);border-radius:8px;padding:10px;width:100%;cursor:pointer;color:var(--neutral-400);font-weight:600;font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:6px;transition:0.2s;" onmouseover="this.style.borderColor='#b45309';this.style.color='#b45309'" onmouseout="this.style.borderColor='var(--neutral-200)';this.style.color='var(--neutral-400)'">
+                                    <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+                                    Add More Test Cases
+                                </button>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;">
+                                <button type="submit" class="btn btn-primary" style="background:#b45309;">
+                                    <span class="material-symbols-rounded">save</span>
+                                    Save Coding Question
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ── STEP 2c: DUBBING QUESTION FORM ── -->
+                <div class="card qform-panel" id="form-dubbing">
+                    <div class="card-header">
+                        <span class="card-title">
+                            <span class="material-symbols-rounded" style="color:#7c3aed;">integration_instructions</span>
+                            Dubbing Question
+                        </span>
+                        <button onclick="hideAllForms()" style="background:none;border:none;cursor:pointer;color:var(--neutral-400);">
+                            <span class="material-symbols-rounded">close</span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{% url 'add_dubbing_question' event.id round_number %}">
+                            {% csrf_token %}
+
+                            <div class="form-group">
+                                <label class="form-label">Title / Question Name</label>
+                                <input type="text" name="title" class="form-input" placeholder="e.g. What does this code print?" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Programming Language</label>
+                                <select name="language" class="form-input" id="lang-select">
+                                    <option value="python">Python</option>
+                                    <option value="java">Java</option>
+                                    <option value="cpp">C++</option>
+                                    <option value="c">C</option>
+                                    <option value="javascript">JavaScript</option>
+                                    <option value="typescript">TypeScript</option>
+                                    <option value="go">Go</option>
+                                    <option value="rust">Rust</option>
+                                    <option value="kotlin">Kotlin</option>
+                                    <option value="swift">Swift</option>
+                                    <option value="ruby">Ruby</option>
+                                    <option value="php">PHP</option>
+                                    <option value="sql">SQL</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            <div class="form-group">
+                                <label class="form-label">Description / Instructions <span style="font-weight:400;color:var(--neutral-400);">(optional)</span></label>
+                                <textarea name="description" class="form-input" placeholder="e.g. Read the code carefully and answer what it prints..." style="min-height:70px;"></textarea>
+                            </div>
+
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px;">
+                                <div class="form-group" style="margin-bottom:0;display:flex;flex-direction:column;">
+                                    <label class="form-label">Sample Input <span style="font-weight:400;color:var(--neutral-400);">(optional)</span></label>
+                                    <textarea name="sample_input" class="form-input" placeholder="e.g. 7" style="min-height:100px;font-family:'Courier New',monospace;font-size:0.9rem;width:100% !important;"></textarea>
+                                </div>
+                                <div class="form-group" style="margin-bottom:0;display:flex;flex-direction:column;">
+                                    <label class="form-label">Sample Output <span style="font-weight:400;color:var(--neutral-400);">(optional)</span></label>
+                                    <textarea name="sample_output" class="form-input" placeholder="e.g. 49" style="min-height:100px;font-family:'Courier New',monospace;font-size:0.9rem;width:100% !important;"></textarea>
+                                </div>
+                            </div>
+
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Code Snippet</label>
+                                <textarea name="code_snippet" class="form-input code-textarea" id="code-editor" placeholder="// Paste your code here..." required></textarea>
+                            </div>
+
+                            <!-- Test Cases Section (Dubbing) -->
+                            <div class="form-group" style="margin-top: 8px;">
+                                <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+                                    <span class="material-symbols-rounded" style="font-size:20px;color:#7c3aed;">science</span>
+                                    Test Cases
+                                    <span style="font-weight:400;color:var(--neutral-400);font-size:0.8rem;">(auto-validation for debugging)</span>
+                                </label>
+                                <div id="dubbing-test-cases-container" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+                                    <!-- 5 test case rows by default -->
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">1</span>
+                                        <textarea name="tc_input_1" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_1" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">2</span>
+                                        <textarea name="tc_input_2" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_2" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">3</span>
+                                        <textarea name="tc_input_3" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_3" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">4</span>
+                                        <textarea name="tc_input_4" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_4" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                    <div class="tc-row" style="display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;">
+                                        <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">5</span>
+                                        <textarea name="tc_input_5" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <textarea name="tc_output_5" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+                                        <span style="width:28px;"></span>
+                                    </div>
+                                </div>
+                                <button type="button" onclick="addTestCaseRow('dubbing-test-cases-container')" style="margin-top:10px;background:none;border:1px dashed var(--neutral-200);border-radius:8px;padding:10px;width:100%;cursor:pointer;color:var(--neutral-400);font-weight:600;font-size:0.85rem;display:flex;align-items:center;justify-content:center;gap:6px;transition:0.2s;" onmouseover="this.style.borderColor='#7c3aed';this.style.color='#7c3aed'" onmouseout="this.style.borderColor='var(--neutral-200)';this.style.color='var(--neutral-400)'">
+                                    <span class="material-symbols-rounded" style="font-size:18px;">add</span>
+                                    Add More Test Cases
+                                </button>
+                            </div>
+
+                            <div style="display:flex;justify-content:flex-end;">
+                                <button type="submit" class="btn btn-primary" style="background:#7c3aed;">
+                                    <span class="material-symbols-rounded">save</span>
+                                    Save Dubbing Question
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- ── QUESTION BANK ── -->
                 <div class="card">
                     <div class="card-header">
                         <span class="card-title">
@@ -679,16 +1046,22 @@
                             Question Bank
                         </span>
                         <span style="background: var(--neutral-50); padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: var(--neutral-600);">
-                            {{ round.questions.count }} Questions
+                            {{ round.questions.count }} MCQ &nbsp;·&nbsp; {{ coding_questions|length }} Coding &nbsp;·&nbsp; {{ dubbing_questions|length }} Dubbing
                         </span>
                     </div>
                     <div class="card-body" style="background: var(--neutral-50);">
-                        {% if round.questions.all %}
+
+                        {% if round.questions.all or coding_questions or dubbing_questions %}
                             <div class="q-stack">
+
+                                <!-- MCQ Questions -->
                                 {% for question in round.questions.all %}
                                 <div class="q-item">
                                     <div class="q-top">
-                                        <span class="q-badge">Q{{ forloop.counter }}</span>
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span class="q-badge">MCQ {{ forloop.counter }}</span>
+                                            <span class="type-chip type-chip-mcq">MCQ</span>
+                                        </div>
                                         <button class="btn-trash" onclick="deleteQuestion(event, {{ question.id }})">
                                             <span class="material-symbols-rounded">delete</span>
                                         </button>
@@ -700,18 +1073,95 @@
                                                 <span>{{ option.get_option_number_display }}.</span>
                                                 <span>{{ option.option_text }}</span>
                                                 {% if option.is_correct %}
-                                                    <span class="material-symbols-rounded" style="font-size: 16px; margin-left: auto;">check</span>
+                                                    <span class="material-symbols-rounded" style="font-size:16px;margin-left:auto;">check</span>
                                                 {% endif %}
                                             </div>
                                         {% endfor %}
                                     </div>
                                 </div>
                                 {% endfor %}
+
+                                <!-- Coding Questions -->
+                                {% for cq in coding_questions %}
+                                <div class="q-item">
+                                    <div class="q-top">
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span class="q-badge">Coding {{ forloop.counter }}</span>
+                                            <span class="type-chip type-chip-coding">Coding</span>
+                                        </div>
+                                        <button class="btn-trash" onclick="deleteRemoteQuestion(event, {{ cq.id }}, 'coding')">
+                                            <span class="material-symbols-rounded">delete</span>
+                                        </button>
+                                    </div>
+                                    <div class="q-text">{{ cq.title }}</div>
+                                    <div style="font-size:0.85rem;color:var(--neutral-600);margin-bottom:8px;">{{ cq.problem_statement|truncatewords:30 }}</div>
+                                    {% if cq.sample_input %}
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.8rem;">
+                                        <div style="background:#f1f5f9;border-radius:6px;padding:8px;">
+                                            <div style="font-weight:700;color:var(--neutral-600);margin-bottom:4px;">Sample Input</div>
+                                            <pre style="margin:0;font-family:'Courier New',monospace;white-space:pre-wrap;color:#334155;">{{ cq.sample_input }}</pre>
+                                        </div>
+                                        <div style="background:#f1f5f9;border-radius:6px;padding:8px;">
+                                            <div style="font-weight:700;color:var(--neutral-600);margin-bottom:4px;">Sample Output</div>
+                                            <pre style="margin:0;font-family:'Courier New',monospace;white-space:pre-wrap;color:#334155;">{{ cq.sample_output }}</pre>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if cq.test_cases.count > 0 %}
+                                    <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+                                        <span class="material-symbols-rounded" style="font-size:16px;color:#b45309;">science</span>
+                                        <span style="font-size:0.8rem;font-weight:600;color:#b45309;">{{ cq.test_cases.count }} test case{{ cq.test_cases.count|pluralize }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+
+                                <!-- Dubbing Questions -->
+                                {% for dq in dubbing_questions %}
+                                <div class="q-item">
+                                    <div class="q-top">
+                                        <div style="display:flex;align-items:center;gap:8px;">
+                                            <span class="q-badge">Dubbing {{ forloop.counter }}</span>
+                                            <span class="type-chip type-chip-dubbing">Dubbing</span>
+                                            <span class="lang-chip">{{ dq.language }}</span>
+                                        </div>
+                                        <button class="btn-trash" onclick="deleteRemoteQuestion(event, {{ dq.id }}, 'dubbing')">
+                                            <span class="material-symbols-rounded">delete</span>
+                                        </button>
+                                    </div>
+                                    <div class="q-text">{{ dq.title }}</div>
+                                    {% if dq.description %}
+                                    <div style="font-size:0.85rem;color:var(--neutral-600);margin-bottom:10px;">{{ dq.description }}</div>
+                                    {% endif %}
+                                    <div style="background:#1e293b;border-radius:8px;padding:14px;overflow-x:auto;">
+                                        <pre style="margin:0;font-family:'Courier New',monospace;font-size:0.82rem;color:#e2e8f0;white-space:pre-wrap;line-height:1.6;">{{ dq.code_snippet }}</pre>
+                                    </div>
+                                    {% if dq.sample_input or dq.sample_output %}
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.8rem;margin-top:8px;">
+                                        <div style="background:#f1f5f9;border-radius:6px;padding:8px;">
+                                            <div style="font-weight:700;color:var(--neutral-600);margin-bottom:4px;">Sample Input</div>
+                                            <pre style="margin:0;font-family:'Courier New',monospace;white-space:pre-wrap;color:#334155;">{{ dq.sample_input }}</pre>
+                                        </div>
+                                        <div style="background:#f1f5f9;border-radius:6px;padding:8px;">
+                                            <div style="font-weight:700;color:var(--neutral-600);margin-bottom:4px;">Sample Output</div>
+                                            <pre style="margin:0;font-family:'Courier New',monospace;white-space:pre-wrap;color:#334155;">{{ dq.sample_output }}</pre>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% if dq.test_cases.count > 0 %}
+                                    <div style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+                                        <span class="material-symbols-rounded" style="font-size:16px;color:#7c3aed;">science</span>
+                                        <span style="font-size:0.8rem;font-weight:600;color:#7c3aed;">{{ dq.test_cases.count }} test case{{ dq.test_cases.count|pluralize }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+
                             </div>
                         {% else %}
                             <div style="text-align: center; padding: 40px; color: var(--neutral-400);">
-                                <span class="material-symbols-rounded" style="font-size: 48px; margin-bottom: 10px;">assignment_add</span>
-                                <p>No questions yet. Add one above.</p>
+                                <span class="material-symbols-rounded" style="font-size: 48px; display:block; margin-bottom: 10px;">assignment_add</span>
+                                <p>No questions yet. Pick a type above to get started.</p>
                             </div>
                         {% endif %}
                     </div>
@@ -765,42 +1215,92 @@
 </div>
 
 <script>
-    async function deleteQuestion(evt, questionId) {
-        if (confirm('Delete this question permanently?')) {
-            try {
-                // Assuming standard Django setup for these vars
-                const eventId = "{{ event.id }}"; 
-                const roundNum = "{{ round_number }}";
-                const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
-                if (!csrfTokenEl) {
-                    alert('Error: Security token missing');
-                    return;
-                }
-                const csrfToken = csrfTokenEl.value;
-                
-                // Note: Ensure your URL pattern matches this API call
-                const response = await fetch(`/api/delete-question/${eventId}/${roundNum}/${questionId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrfToken,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    const card = evt.target.closest('.q-item');
-                    card.style.opacity = '0';
-                    setTimeout(() => location.reload(), 300);
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Connection error');
-            }
+    // ─── Question Type Switcher ───────────────────────────────────────────
+    function showForm(type) {
+        // Hide all panels
+        hideAllForms();
+        // Show the chosen one
+        const panel = document.getElementById('form-' + type);
+        if (panel) {
+            panel.classList.add('visible');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // Mark button active
+        document.querySelectorAll('.qtype-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.getElementById('btn-' + type);
+        if (btn) btn.classList.add('active');
+    }
+
+    function hideAllForms() {
+        document.querySelectorAll('.qform-panel').forEach(p => p.classList.remove('visible'));
+        document.querySelectorAll('.qtype-btn').forEach(b => b.classList.remove('active'));
+    }
+
+    // ─── Remote Question Deletion (Unified) ────────────────────────────────
+    async function deleteRemoteQuestion(evt, questionId, type) {
+        if (!confirm('Delete this question permanently?')) return;
+        
+        try {
+            const eventId = "{{ event.id }}";
+            const roundNum = "{{ round_number }}";
+            const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfTokenEl) { alert('Error: Security token missing'); return; }
+            const csrfToken = csrfTokenEl.value;
+
+            let apiUrl = '';
+            if (type === 'mcq') {
+                apiUrl = `/api/delete-question/${eventId}/${roundNum}/${questionId}/`;
+            } else if (type === 'coding') {
+                apiUrl = `/api/delete-coding-question/${eventId}/${roundNum}/${questionId}/`;
+            } else if (type === 'dubbing') {
+                apiUrl = `/api/delete-dubbing-question/${eventId}/${roundNum}/${questionId}/`;
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' }
+            });
+            const data = await response.json();
+            if (data.success) {
+                const card = evt.target.closest('.q-item');
+                card.style.opacity = '0';
+                card.style.transition = 'opacity 0.3s';
+                setTimeout(() => location.reload(), 300);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Connection error');
+        }
+    }
+
+    // Rename old call for MCQ
+    function deleteQuestion(evt, qId) { deleteRemoteQuestion(evt, qId, 'mcq'); }
+
+    // ─── Dynamic Test Case Rows ──────────────────────────────────────────
+    function addTestCaseRow(containerId) {
+        const container = document.getElementById(containerId);
+        const rows = container.getElementsByClassName('tc-row');
+        const nextNum = rows.length + 1;
+        
+        if (nextNum > 10) {
+            alert('Maximum 10 test cases allowed.');
+            return;
+        }
+        
+        const row = document.createElement('div');
+        row.className = 'tc-row';
+        row.style.cssText = 'display:grid;grid-template-columns:auto 1fr 1fr auto;gap:10px;align-items:start;';
+        row.innerHTML = `
+            <span style="width:28px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--neutral-400);font-size:0.85rem;">${nextNum}</span>
+            <textarea name="tc_input_${nextNum}" class="form-input" placeholder="Input (stdin)" style="min-height:60px;font-size:0.85rem;"></textarea>
+            <textarea name="tc_output_${nextNum}" class="form-input" placeholder="Expected Output *" style="min-height:60px;font-size:0.85rem;"></textarea>
+            <button type="button" onclick="this.closest('.tc-row').remove()" style="width:28px;height:36px;border:none;background:none;cursor:pointer;color:var(--neutral-400);border-radius:4px;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='var(--neutral-400)'">
+                <span class="material-symbols-rounded" style="font-size:18px;">close</span>
+            </button>
+        `;
+        container.appendChild(row);
     }
 </script>
 

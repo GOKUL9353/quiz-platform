@@ -98,3 +98,75 @@ class QuestionOption(models.Model):
     
     class Meta:
         ordering = ['option_number']
+
+
+CODING_LANGUAGE_CHOICES = [
+    ('c', 'C'),
+    ('python', 'Python'),
+    ('java', 'Java'),
+]
+
+
+class CodingQuestion(models.Model):
+    """Model to store coding/programming questions for a round"""
+    round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='coding_questions')
+    title = models.CharField(max_length=500)
+    problem_statement = models.TextField()
+    input_format = models.TextField(blank=True, default='')
+    output_format = models.TextField(blank=True, default='')
+    constraints = models.TextField(blank=True, default='')
+    sample_input = models.TextField(blank=True, default='')
+    sample_output = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.round} - Coding: {self.title}"
+
+    class Meta:
+        ordering = ['created_at']
+
+
+class TestCase(models.Model):
+    """Model to store test cases for coding questions"""
+    coding_question = models.ForeignKey(CodingQuestion, on_delete=models.CASCADE, related_name='test_cases')
+    input_data = models.TextField(blank=True, default='')
+    expected_output = models.TextField()
+    order = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"TestCase {self.order} for {self.coding_question.title}"
+
+    class Meta:
+        ordering = ['order']
+
+
+class DubbingQuestion(models.Model):
+    """Model to store code-snippet (dubbing) questions for a round"""
+    round = models.ForeignKey(Round, on_delete=models.CASCADE, related_name='dubbing_questions')
+    title = models.CharField(max_length=500)
+    description = models.TextField(blank=True, default='')
+    language = models.CharField(max_length=50, choices=CODING_LANGUAGE_CHOICES, default='python')
+    code_snippet = models.TextField()
+    sample_input = models.TextField(blank=True, default='')
+    sample_output = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.round} - Dubbing: {self.title} [{self.language}]"  
+
+    class Meta:
+        ordering = ['created_at']
+
+
+class DubbingTestCase(models.Model):
+    """Model to store test cases for dubbing (debugging) questions"""
+    dubbing_question = models.ForeignKey(DubbingQuestion, on_delete=models.CASCADE, related_name='test_cases')
+    input_data = models.TextField(blank=True, default='')
+    expected_output = models.TextField()
+    order = models.IntegerField(default=0)
+
+    def __str__(self):
+        return f"DubbingTestCase {self.order} for {self.dubbing_question.title}"
+
+    class Meta:
+        ordering = ['order']

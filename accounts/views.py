@@ -3,7 +3,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.http import JsonResponse
-from .models import Event, Round, Question, QuestionOption, CandidateEntry
+from .models import Event, Round, Question, QuestionOption, CandidateEntry, CodingQuestion, DubbingQuestion, TestCase, DubbingTestCase
 from datetime import timedelta
 from django.utils import timezone
 from django.db.models import Count, Prefetch
@@ -11,6 +11,8 @@ import json
 import logging
 import random
 import string
+import urllib.request
+import urllib.error
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +241,9 @@ def round_details(request, event_id, round_number):
         context = {
             'event': event,
             'round': round_obj,
-            'round_number': round_number
+            'round_number': round_number,
+            'coding_questions': round_obj.coding_questions.all(),
+            'dubbing_questions': round_obj.dubbing_questions.all(),
         }
         return render(request, 'round_details.html', context)
     except Event.DoesNotExist:
@@ -309,12 +313,110 @@ def delete_question(request, event_id, round_number, question_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
+@csrf_exempt
+def delete_coding_question(request, event_id, round_number, question_id):
+    """API endpoint to delete a coding question"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        CodingQuestion.objects.filter(id=question_id, round__event_id=event_id, round__round_number=round_number).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def delete_dubbing_question(request, event_id, round_number, question_id):
+    """API endpoint to delete a dubbing question"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        DubbingQuestion.objects.filter(id=question_id, round__event_id=event_id, round__round_number=round_number).delete()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 # Logout
 def admin_logout(request):
     """Handle admin logout"""
     logout(request)
     messages.success(request, 'You have been logged out successfully!')
     return redirect('login_choice')
+
+
+# Add coding question
+def add_coding_question(request, event_id, round_number):
+    """Handle coding question creation"""
+    if request.method == 'POST':
+        try:
+            event = Event.objects.get(id=event_id)
+            round_obj = Round.objects.get(event=event, round_number=round_number)
+
+            coding_q = CodingQuestion.objects.create(
+                round=round_obj,
+                title=request.POST.get('title', '').strip(),
+                problem_statement=request.POST.get('problem_statement', '').strip(),
+                input_format=request.POST.get('input_format', '').strip(),
+                output_format=request.POST.get('output_format', '').strip(),
+                constraints=request.POST.get('constraints', '').strip(),
+                sample_input=request.POST.get('sample_input', '').strip(),
+                sample_output=request.POST.get('sample_output', '').strip(),
+            )
+
+            # Save test cases (up to 10)
+            for i in range(1, 11):
+                tc_input = request.POST.get(f'tc_input_{i}', '').strip()
+                tc_output = request.POST.get(f'tc_output_{i}', '').strip()
+                if tc_output:  # Only save if expected output is provided
+                    TestCase.objects.create(
+                        coding_question=coding_q,
+                        input_data=tc_input,
+                        expected_output=tc_output,
+                        order=i
+                    )
+
+            messages.success(request, 'Coding question added successfully!')
+        except Exception as e:
+            messages.error(request, f'Error adding coding question: {str(e)}')
+    return redirect('round_details', event_id=event_id, round_number=round_number)
+
+
+# Add dubbing question
+def add_dubbing_question(request, event_id, round_number):
+    """Handle dubbing (code-snippet) question creation"""
+    if request.method == 'POST':
+        try:
+            event = Event.objects.get(id=event_id)
+            round_obj = Round.objects.get(event=event, round_number=round_number)
+
+            dubbing_q = DubbingQuestion.objects.create(
+                round=round_obj,
+                title=request.POST.get('title', '').strip(),
+                description=request.POST.get('description', '').strip(),
+                language=request.POST.get('language', 'python'),
+                code_snippet=request.POST.get('code_snippet', '').strip(),
+                sample_input=request.POST.get('sample_input', '').strip(),
+                sample_output=request.POST.get('sample_output', '').strip(),
+            )
+
+            # Save test cases (up to 10)
+            for i in range(1, 11):
+                tc_input = request.POST.get(f'tc_input_{i}', '').strip()
+                tc_output = request.POST.get(f'tc_output_{i}', '').strip()
+                if tc_output:  # Only save if expected output is provided
+                    DubbingTestCase.objects.create(
+                        dubbing_question=dubbing_q,
+                        input_data=tc_input,
+                        expected_output=tc_output,
+                        order=i
+                    )
+            messages.success(request, 'Dubbing question added successfully!')
+        except Exception as e:
+            messages.error(request, f'Error adding dubbing question: {str(e)}')
+    return redirect('round_details', event_id=event_id, round_number=round_number)
 
 
 # API: Verify event password
@@ -417,9 +519,13 @@ def quiz_test(request, event_id, round_number):
         event = Event.objects.get(id=event_id)
         # Optimize: prefetch questions with their options to avoid N+1 queries
         round_obj = Round.objects.prefetch_related(
-            Prefetch('questions', Question.objects.prefetch_related('options'))
+            Prefetch('questions', Question.objects.prefetch_related('options')),
+            'coding_questions',
+            'dubbing_questions'
         ).get(event=event, round_number=round_number)
         questions = round_obj.questions.all()
+        coding_questions = round_obj.coding_questions.all()
+        dubbing_questions = round_obj.dubbing_questions.all()
         
         # Mark candidate as no longer waiting (they've started the quiz)
         if candidate_entry_id:
@@ -436,7 +542,9 @@ def quiz_test(request, event_id, round_number):
             'round': round_obj,
             'round_number': round_number,
             'questions': questions,
-            'total_questions': questions.count(),
+            'coding_questions': coding_questions,
+            'dubbing_questions': dubbing_questions,
+            'total_questions': questions.count() + coding_questions.count() + dubbing_questions.count(),
             'candidate_name': candidate_name,
             'candidate_entry_id': candidate_entry_id
         }
@@ -687,6 +795,183 @@ def init_waiting(request, candidate_entry_id):
 def check_connectivity(request):
     """Simple connectivity check endpoint"""
     return JsonResponse({'status': 'ok', 'timestamp': timezone.now().isoformat()})
+
+
+@csrf_exempt
+def run_code(request):
+    """
+    Execute candidate code locally using subprocess.
+    If question_id is provided for a coding question, run against all stored test cases.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+
+    import subprocess, tempfile, os, shutil, re
+
+    try:
+        data = json.loads(request.body)
+        language     = data.get('language', 'python').lower().strip()
+        code         = data.get('code', '').strip()
+        stdin        = data.get('stdin', '')
+        question_id  = data.get('question_id')
+        question_type = data.get('question_type', 'coding')
+
+        if not code:
+            return JsonResponse({'success': False, 'error': 'No code provided'}, status=400)
+
+        TIMEOUT = 10
+
+        # ── Helper: compile code once, return (exe_path, tmp_dir, error) ──
+        def prepare_code(code, language, tmp_dir):
+            if language == 'python':
+                src = os.path.join(tmp_dir, 'solution.py')
+                with open(src, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                return ('python', [src], None)
+
+            elif language == 'c':
+                src = os.path.join(tmp_dir, 'solution.c')
+                exe = os.path.join(tmp_dir, 'solution.exe')
+                with open(src, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                comp = subprocess.run(
+                    ['gcc', src, '-o', exe, '-lm'],
+                    capture_output=True, text=True, timeout=30, cwd=tmp_dir
+                )
+                if comp.returncode != 0:
+                    return (None, None, comp.stderr)
+                return ('exe', [exe], None)
+
+            elif language == 'java':
+                m = re.search(r'public\s+class\s+(\w+)', code)
+                class_name = m.group(1) if m else 'Solution'
+                src = os.path.join(tmp_dir, f'{class_name}.java')
+                with open(src, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                comp = subprocess.run(
+                    ['javac', src],
+                    capture_output=True, text=True, timeout=30, cwd=tmp_dir
+                )
+                if comp.returncode != 0:
+                    return (None, None, comp.stderr)
+                return ('java', ['-cp', tmp_dir, class_name], None)
+
+            return (None, None, f'Unsupported language: {language}')
+
+        # ── Helper: run compiled code with given stdin ──
+        def execute(runner, cmd_args, stdin_data, tmp_dir):
+            if runner == 'python':
+                cmd = ['python'] + cmd_args
+            elif runner == 'exe':
+                cmd = cmd_args
+            elif runner == 'java':
+                cmd = ['java'] + cmd_args
+            else:
+                return '', 'Unknown runner', 1
+
+            result = subprocess.run(
+                cmd, input=stdin_data, capture_output=True, text=True,
+                timeout=TIMEOUT, cwd=tmp_dir
+            )
+            return result.stdout, result.stderr, result.returncode
+
+        # ── Fetch test cases if question_id is provided ──
+        test_cases = []
+        if question_id:
+            if question_type == 'coding':
+                try:
+                    coding_q = CodingQuestion.objects.get(id=question_id)
+                    test_cases = list(coding_q.test_cases.all())
+                except CodingQuestion.DoesNotExist:
+                    pass
+            elif question_type == 'dubbing':
+                try:
+                    dubbing_q = DubbingQuestion.objects.get(id=question_id)
+                    test_cases = list(dubbing_q.test_cases.all())
+                except DubbingQuestion.DoesNotExist:
+                    pass
+
+        tmp_dir = tempfile.mkdtemp(prefix='quiz_run_')
+        try:
+            runner, cmd_args, compile_err = prepare_code(code, language, tmp_dir)
+            if compile_err:
+                return JsonResponse({
+                    'success': False,
+                    'output': compile_err,
+                    'error_type': 'compile_error'
+                })
+
+            # Normalize manual stdin if provided
+            if stdin:
+                stdin = stdin.replace('\r\n', '\n').replace('\r', '\n')
+
+            # ── Run against test cases ──
+            if test_cases and not stdin:
+                results = []
+                passed = 0
+                for tc in test_cases:
+                    # Normalize test case input
+                    clean_input = tc.input_data.replace('\r\n', '\n').replace('\r', '\n')
+                    try:
+                        stdout, stderr, rc = execute(runner, cmd_args, clean_input, tmp_dir)
+                        actual = stdout.strip().replace('\r\n', '\n').replace('\r', '\n')
+                        expected = tc.expected_output.strip().replace('\r\n', '\n').replace('\r', '\n')
+                        
+                        is_pass = (actual == expected and rc == 0)
+                        if is_pass:
+                            passed += 1
+                        
+                        results.append({
+                            'order':    tc.order,
+                            'passed':   is_pass,
+                            'input':    tc.input_data[:200],
+                            'expected': expected[:200],
+                            'actual':   actual[:200] if rc == 0 else stderr[:200],
+                        })
+                    except subprocess.TimeoutExpired:
+                        results.append({
+                            'order':  tc.order,
+                            'passed': False,
+                            'input':  tc.input_data[:200],
+                            'expected': tc.expected_output.strip()[:200],
+                            'actual': 'Time Limit Exceeded',
+                        })
+
+                return JsonResponse({
+                    'success': passed == len(test_cases),
+                    'mode': 'test_cases',
+                    'passed': passed,
+                    'total': len(test_cases),
+                    'results': results,
+                })
+
+            # ── Simple run (no test cases or dubbing) ──
+            else:
+                try:
+                    stdout, stderr, rc = execute(runner, cmd_args, stdin, tmp_dir)
+                except subprocess.TimeoutExpired:
+                    return JsonResponse({
+                        'success': False,
+                        'output': f'⏱ Time Limit Exceeded ({TIMEOUT}s)',
+                        'error_type': 'tle'
+                    })
+
+                return JsonResponse({
+                    'success': rc == 0,
+                    'mode': 'simple',
+                    'output': stdout if stdout else stderr,
+                    'exit_code': rc,
+                })
+
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid request data'}, status=400)
+    except Exception as e:
+        logger.error(f'run_code error: {e}')
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
 
 
 def mark_tab_switched(request, candidate_entry_id):
